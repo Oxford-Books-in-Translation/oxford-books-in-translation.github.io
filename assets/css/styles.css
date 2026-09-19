@@ -1076,7 +1076,30 @@ code {
   .book-table td.is-empty { display: none; }
   .book-table tbody tr:hover { background: none; }
 
-  /* The map is only ~150px tall on a phone, and a stack of controls floating
+  /* A world map is 960:420, so its height is decided entirely by its width —
+     at 335px it can only be 147px tall, and cropping for a taller frame costs
+     real geography (190px would already cut New Zealand off the edge). The
+     one honest way to make it bigger is to give it the whole screen width, so
+     it runs edge to edge and the gutters come off. */
+  .map-figure {
+    margin-inline: -20px;
+  }
+  .map-figure .map-foot,
+  .map-figure .map-buttons {
+    padding-inline: 20px;
+  }
+
+  /* Shorten the run-up so the map starts higher up the screen and more of it
+     is in view at once — it was being pushed down by a heading and a
+     three-line standfirst. */
+  .section:first-of-type .section-head {
+    margin-bottom: 1rem;
+  }
+  .section:first-of-type .section-sub {
+    font-size: 0.9375rem;
+  }
+
+  /* The map is only ~160px tall on a phone, and a stack of controls floating
      over its right-hand edge was covering Japan and Korea. Put them underneath
      instead: they leave the flow as soon as position goes static. */
   .map-buttons {
@@ -1085,6 +1108,14 @@ code {
     justify-content: flex-end;
     gap: 8px;
     margin-top: 0.75rem;
+  }
+
+  /* Zoomed in you are looking at a region, not the world, so the frame stops
+     having to keep the world's proportions and becomes a proper window.
+     `slice` fills the taller box by cropping width, which is exactly what you
+     want once you are already zoomed and can pan. */
+  #map.is-zoomed {
+    height: min(58vh, 380px);
   }
 
   /* Start the list at a recent handful; the button reveals the rest.

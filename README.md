@@ -268,6 +268,23 @@ the whole world is 280px across, which makes Hungary 4.5×2.6px and South Korea
   would push the map off the top, which is the disorienting jump this layout
   exists to avoid. A tap that opens a panel below the fold is
   indistinguishable from a tap that did nothing, which is what this fixes.
+- **The map runs edge to edge.** A world map is 960:420, so its height is
+  decided entirely by its width — there is no way to make it taller without
+  cropping, and cropping costs real geography: a 190px-tall frame would already
+  push New Zealand off the edge, and 260px would lose Australia's east coast
+  and Canada's west. Full-bleed is the one honest gain, taking it from 335×147
+  to 375×164.
+- **Zooming in makes the map a proper window.** Once you are zoomed you are
+  looking at a region, not the world, so the frame stops having to keep the
+  world's proportions and grows to 58vh — about 380px, more than twice its
+  resting height. `preserveAspectRatio` switches to `slice` so the map fills
+  that taller box instead of sitting letterboxed in it, and switches back on
+  reset.
+- **`+` zooms toward the country you last touched**, not the middle of the
+  Sahara. This is the part that makes a three-pixel country usable: tap
+  anywhere near Hungary and press `+` three times and it goes from 6×3px to
+  about 57×33px, comfortably past the 24px target-size threshold, without ever
+  leaving the screen. Zooming about the centre would just push it off the edge.
 - **The zoom controls sit under the map** rather than floating over its
   right-hand edge, where at phone height they covered Japan and Korea.
 - **The book list starts at the six most recent** with a button for the rest.

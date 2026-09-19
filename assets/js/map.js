@@ -197,6 +197,7 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
   // the country whose name is pinned to the map.
   let namedCode = null;
   let transientCode = null;
+  let selectedCode = null;
   const paintSoft = () => paint(softLayer, transientCode || namedCode);
 
   // Start both layers empty and explicitly hidden, rather than relying on a
@@ -404,6 +405,9 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
       root.attr('transform', event.transform);
       dots.attr('r', 5 / scale);
       svgEl.classList.toggle('is-zoomed', scale > 1);
+      // On a phone the zoomed frame is taller than the world's proportions,
+      // so the map has to fill it rather than sit letterboxed inside it.
+      svgEl.setAttribute('preserveAspectRatio', scale > 1 ? 'xMidYMid slice' : 'xMidYMid meet');
       // The label is placed in screen coordinates, so panning would leave it
       // pointing at open sea. Take it away rather than let it lie.
       clearName();
@@ -421,14 +425,30 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
   return {
     /** Outline the selected country (or clear it when code is null). */
     highlight(code) {
-      paint(strongLayer, code || null);
+      selectedCode = code || null;
+      paint(strongLayer, selectedCode);
       dots.classed('is-selected', (d) => d.entry.code === code);
     },
     /** Momentarily pick out a country — used when pointing at it in the list. */
     spotlight(code) {
       touch(code ? { code } : null);
     },
-    zoomIn() { ease(svg).call(zoom.scaleBy, 1.6); },
+    /**
+     * Zoom in on the country you are actually interested in, not the middle
+     * of the Sahara. Pressing + after tapping a country is how you get a
+     * three-pixel country big enough to tap accurately — zooming about the
+     * centre of the map would just push it off the edge.
+     */
+    zoomIn() {
+      const code = namedCode || selectedCode;
+      const node = code ? shapeByCode.get(code) : null;
+      if (!node) {
+        ease(svg).call(zoom.scaleBy, 1.6);
+        return;
+      }
+      const box = node.getBBox();
+      ease(svg).call(zoom.scaleBy, 1.6, [box.x + box.width / 2, box.y + box.height / 2]);
+    },
     zoomOut() { ease(svg).call(zoom.scaleBy, 1 / 1.6); },
     reset() { ease(svg).call(zoom.transform, d3.zoomIdentity); },
     /** Codes we have books for but could only draw as a point. */
