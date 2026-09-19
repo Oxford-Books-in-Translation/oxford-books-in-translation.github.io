@@ -238,7 +238,7 @@ function renderCountryIndex() {
       el('span', { class: 'index-count', text: String(entry.count) }),
     ]);
 
-    button.addEventListener('click', () => selectCountry(entry.code, { scroll: true }));
+    button.addEventListener('click', () => selectCountry(entry.code));
     // Pointing at a row picks the country out on the map, so the list and the
     // picture read as one thing.
     button.addEventListener('pointerenter', () => map.spotlight(entry.code));
@@ -395,7 +395,7 @@ function originCell(book) {
       class: 'country-link',
       text: data.countries[code].name,
     });
-    button.addEventListener('click', () => selectCountry(code, { scroll: true }));
+    button.addEventListener('click', () => selectCountry(code));
     parts.push(button);
   });
   book.badCodes.forEach((code) => {
@@ -474,11 +474,40 @@ function renderTable() {
 
   $('book-table').hidden = books.length === 0;
   $('empty-note').hidden = books.length > 0;
+  updateShowAll(books.length);
 
   const filtersOn = state.country || state.language || state.search;
   $('result-count').textContent = filtersOn
     ? `Showing ${books.length} of ${plural(data.books.length, 'book')}${describeFilters()}.`
     : `All ${plural(data.books.length, 'book')}.`;
+}
+
+/**
+ * On a phone the whole list is a punishing scroll, so it starts capped at a
+ * recent handful. The cap is applied in CSS and only exists at phone widths;
+ * this keeps the button's label honest and resets it whenever the list changes
+ * underneath, so you never get "show all" on a list that is already showing
+ * everything.
+ */
+const MOBILE_ROW_CAP = 6;
+let showingAllBooks = false;
+
+function updateShowAll(visibleCount) {
+  const button = $('show-all-books');
+  const table = $('book-table');
+  const cappable = visibleCount > MOBILE_ROW_CAP;
+
+  button.hidden = !cappable;
+  table.classList.toggle('is-capped', cappable && !showingAllBooks);
+
+  if (!cappable) {
+    showingAllBooks = false;
+    return;
+  }
+  button.textContent = showingAllBooks
+    ? 'Show fewer'
+    : `Show all ${visibleCount} books`;
+  button.setAttribute('aria-expanded', String(showingAllBooks));
 }
 
 function describeFilters() {
@@ -491,7 +520,7 @@ function describeFilters() {
 
 /* ------------------------------------------------------------------ state */
 
-function setState(patch, options = {}) {
+function setState(patch) {
   Object.assign(state, patch);
 
   $('filter-country').value = state.country;
@@ -514,20 +543,19 @@ function setState(patch, options = {}) {
 
   map.highlight(state.country);
   renderCountryPanel();
+  // A new filter means a new list, so collapse it again rather than leaving
+  // "Show fewer" hanging over a list that is now three rows long.
+  showingAllBooks = false;
   renderTable();
   syncHash();
 
-  if (options.scroll && state.country) {
-    $('country-panel').scrollIntoView({
-      behavior: reducedMotion() ? 'auto' : 'smooth',
-      block: 'start',
-    });
-  }
 }
 
-function selectCountry(code, options = {}) {
+function selectCountry(code) {
   // Tapping the selected country again clears it, which is what a map invites.
-  setState({ country: state.country === code ? '' : code }, options);
+  // No scrolling: the country's books now appear directly beneath the map, so
+  // moving the page would only take the answer away from where you're looking.
+  setState({ country: state.country === code ? '' : code });
 }
 
 /* --------------------------------------------------- shareable URL state */
@@ -604,13 +632,26 @@ function buildFilters() {
   $('filter-clear').addEventListener('click', () => {
     setState({ country: '', language: '', search: '' });
   });
+
+  $('show-all-books').addEventListener('click', () => {
+    showingAllBooks = !showingAllBooks;
+    const wasExpanded = showingAllBooks;
+    updateShowAll(visibleBooks().length);
+    // Collapsing from far down the list would otherwise strand you in the
+    // footer, so return to the top of the list.
+    if (!wasExpanded) {
+      $('books').scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' });
+    }
+  });
   $('country-clear').addEventListener('click', () => setState({ country: '' }));
 }
 
 function setMapHint() {
   const coarse = window.matchMedia('(pointer: coarse)').matches;
+  // On a phone the countries are too small to hit reliably, so point at the
+  // list rather than pretending the map is the interface.
   $('map-hint').textContent = coarse
-    ? 'Tap a country for its books. Pinch with two fingers to zoom.'
+    ? 'Tap a country, or pick one from the list below. Pinch with two fingers to zoom.'
     : 'Click a country for its books. Ctrl + scroll to zoom, drag to pan.';
 }
 
@@ -630,7 +671,7 @@ async function init() {
     topology: data.topology,
     countries: data.countries,
     byCountry: data.byCountry,
-    onSelect: (code) => selectCountry(code, { scroll: true }),
+    onSelect: (code) => selectCountry(code),
     tooltip,
   });
 

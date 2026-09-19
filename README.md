@@ -114,22 +114,24 @@ publish the reading list, that is the decision to make first.
 
 ### Sharing the link
 
-The page already carries Open Graph tags, so pasting the link into a chat or
-onto Meetup shows a proper title and description rather than a bare URL.
+The site is live at **<https://oxford-books-in-translation.github.io/>**.
 
-Two tags are missing on purpose, because a preview card needs **absolute**
-URLs and there was no address yet. Once the site is live, add them to
-`<head>` in `index.html`:
+It carries Open Graph tags, so pasting the link into a chat or onto Meetup
+shows a proper title and description rather than a bare URL.
 
-```html
-<meta property="og:url" content="https://USER.github.io/REPO/">
-<meta property="og:image" content="https://USER.github.io/REPO/share.png">
-```
+**To add the picture card** (optional — it makes a shared link much more
+eye-catching):
 
-`share.png` should be 1200×630. A screenshot of the map on its cream
-background does the job. Add `<meta name="twitter:card" content="summary_large_image">`
-in place of the existing `summary` at the same time, so the image gets the
-full-width card.
+1. Open [`tools/share-card.html`](tools/share-card.html) — either live at
+   `/tools/share-card.html` or locally via `npm run serve`.
+2. Click **Download share.jpg**. It draws a 1200×630 card from the live map.
+3. Put `share.jpg` in the repository root and push.
+4. In `index.html`, uncomment the three `og:image` / `twitter:card` lines and
+   delete the `<meta name="twitter:card" content="summary">` beneath them.
+
+They're commented out until the file exists, because a preview image that 404s
+looks worse than no image at all. Re-run the generator whenever the map has
+changed enough to be worth it.
 
 No Pages workflow is needed — the repository is already a static site, and
 `.nojekyll` stops GitHub trying to process it as a Jekyll blog.
@@ -169,7 +171,9 @@ data/countries.json        ISO codes, names, centroids
 vendor/                    d3, topojson-client, world boundaries
 vendor/fonts/              Fraunces and Newsreader (woff2, latin)
 scripts/validate-books.mjs the data check
+scripts/check-contrast.mjs the colour check
 scripts/serve.mjs          local preview server
+tools/share-card.html      draws the link-preview image from the live map
 ```
 
 D3, the boundary data and the two typefaces are committed to `vendor/` rather
@@ -209,6 +213,23 @@ the count; colour says "this is data".
 
 Titles in Korean, Japanese or Cyrillic fall back per glyph to a system face,
 since the vendored fonts carry only the latin range.
+
+### On a phone
+
+A small phone is the hardest case, so three things change below 720px.
+
+- **A country's books appear directly under the map**, not further down the
+  page. Tapping a country on a phone used to scroll you somewhere else, which
+  read as the page jumping rather than as a filter being applied. The panel is
+  in the same place on every screen size; only the need for it is sharper on a
+  phone.
+- **The zoom controls sit under the map** rather than floating over its
+  right-hand edge, where at phone height they covered Japan and Korea.
+- **The book list starts at the six most recent** with a button for the rest.
+  The full list is already a long scroll on a phone and only gets longer.
+  Changing a filter collapses it again, and collapsing returns you to the top
+  of the list rather than stranding you in the footer. Nothing is capped on a
+  larger screen.
 
 ## Accessibility
 

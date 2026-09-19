@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Share card generator</title>
+<meta name="robots" content="noindex">
+<style>
+  :root { color-scheme: light; }
+  body {
+    margin: 0; padding: 24px;
+    background: #f2ebdd; color: #221d16;
+    font: 16px/1.5 Georgia, 'Iowan Old Style', serif;
+  }
+  .wrap { max-width: 1240px; margin-inline: auto; }
+  h1 { font-size: 1.25rem; margin: 0 0 0.4rem; }
+  p { margin: 0 0 1rem; max-width: 60ch; color: #5c5347; }
+  canvas { width: 100%; height: auto; border: 1px solid rgba(34,29,22,0.2); }
+  button {
+    font: inherit; font-size: 0.9375rem;
+    background: #f7f1e6; color: #8a3a1c;
+    border: 1px solid #8a8072; border-radius: 2px;
+    padding: 0.5rem 1rem; cursor: pointer; margin-bottom: 1rem;
+  }
+  button:disabled { color: #74695b; cursor: default; }
+  iframe { position: absolute; width: 1400px; height: 1200px; left: -9999px; top: 0; border: 0; }
+  code { background: #e5ddcc; padding: 0.1em 0.35em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Share card generator</h1>
+  <p>Makes the 1200&times;630 image used for link previews, from the live map.
+    Click download, save it as <code>share.jpg</code> in the repository root,
+    and push. Re-run it whenever the map has changed enough to be worth it.</p>
+
+  <button id="save" disabled>Preparing&hellip;</button>
+  <canvas id="card" width="1200" height="630"></canvas>
+</div>
+
+<iframe id="site" src="../index.html" title="The site, used as the source of the map"></iframe>
+
+<script>
+const W = 1200, H = 630;
+const PAPER = '#f7f1e6', INK = '#221d16', SUBTLE = '#5c5347';
+
+function drawText(ctx) {
+  ctx.fillStyle = INK;
+  ctx.font = '700 62px Fraunces, Georgia, serif';
+  ctx.fillText('Oxford Books in Translation', 60, 104);
+  ctx.fillStyle = SUBTLE;
+  ctx.font = 'italic 28px Newsreader, Georgia, serif';
+  ctx.fillText('Every book we’ve read, and where in the world it came from', 60, 152);
+  ctx.fillStyle = INK;
+  ctx.fillRect(60, 176, W - 120, 1);
+}
+
+/** Copy the computed paint onto the clone: CSS classes don't survive serialising. */
+function inlinePaint(source, clone) {
+  const from = [...source.querySelectorAll('path, circle')];
+  const to = [...clone.querySelectorAll('path, circle')];
+  from.forEach((node, i) => {
+    const style = getComputedStyle(node);
+    to[i].setAttribute('fill', style.fill);
+    to[i].setAttribute('stroke', style.stroke);
+    to[i].setAttribute('stroke-width', style.strokeWidth);
+    to[i].removeAttribute('class');
+  });
+}
+
+async function build() {
+  const frame = document.getElementById('site');
+  const doc = frame.contentDocument;
+  doc.documentElement.dataset.theme = 'light';
+  await doc.fonts.ready;
+
+  // Wait for the map to have been drawn.
+  for (let i = 0; i < 60 && !doc.querySelector('#map path.country'); i++) {
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  const map = doc.getElementById('map');
+  if (!map || !map.querySelector('path.country')) throw new Error('the map did not render');
+
+  const clone = map.cloneNode(true);
+  inlinePaint(map, clone);
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.setAttribute('width', '960');
+  clone.setAttribute('height', '420');
+
+  const svg = 'data:image/svg+xml;charset=utf-8,' +
+    encodeURIComponent(new XMLSerializer().serializeToString(clone));
+  const img = await new Promise((res, rej) => {
+    const i = new Image();
+    i.onload = () => res(i);
+    i.onerror = () => rej(new Error('could not rasterise the map'));
+    i.src = svg;
+  });
+
+  // The page's fonts are a separate document, so load them here too.
+  await document.fonts.ready;
+
+  const canvas = document.getElementById('card');
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = PAPER;
+  ctx.fillRect(0, 0, W, H);
+  const mw = 1080, mh = mw * (420 / 960);
+  ctx.drawImage(img, (W - mw) / 2, 196, mw, mh);
+  drawText(ctx);
+
+  const button = document.getElementById('save');
+  button.disabled = false;
+  button.textContent = 'Download share.jpg';
+  button.onclick = () => {
+    canvas.toBlob((blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'share.jpg';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }, 'image/jpeg', 0.9);
+  };
+}
+
+document.getElementById('site').addEventListener('load', () => {
+  build().catch((error) => {
+    document.getElementById('save').textContent = 'Failed: ' + error.message;
+  });
+});
+</script>
+</body>
+</html>

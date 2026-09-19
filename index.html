@@ -7,18 +7,25 @@
 <meta name="description" content="An interactive map of every book our group has read: where the authors are from, and what language each book was written in.">
 <meta name="color-scheme" content="light dark">
 
-<!-- How the link looks when it's pasted into a chat or onto Meetup.
-     og:url and og:image are deliberately absent until the site has a real
-     address — a preview card needs absolute URLs, and a broken one looks
-     worse than none. See "Sharing the link" in the README. -->
+<!-- How the link looks when it's pasted into a chat or onto Meetup. -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Oxford Books in Translation">
 <meta property="og:title" content="Oxford Books in Translation — Reading Map">
 <meta property="og:description" content="Every book our group has read in translation, mapped: where each author is from, and the language the book was written in.">
+<meta property="og:url" content="https://oxford-books-in-translation.github.io/">
 <meta property="og:locale" content="en_GB">
-<meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Oxford Books in Translation — Reading Map">
 <meta name="twitter:description" content="Every book our group has read in translation, mapped: where each author is from, and the language the book was written in.">
+
+<!-- Picture card. Make share.jpg with tools/share-card.html, put it in the
+     repository root, then swap the two lines below for these three. A preview
+     image that 404s looks worse than no image, so they stay commented until
+     the file exists.
+<meta property="og:image" content="https://oxford-books-in-translation.github.io/share.jpg">
+<meta property="og:image:alt" content="A world map with the countries we have read from shaded in green.">
+<meta name="twitter:card" content="summary_large_image">
+-->
+<meta name="twitter:card" content="summary">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>📚</text></svg>">
 <link rel="stylesheet" href="assets/css/styles.css">
 </head>
@@ -126,6 +133,19 @@
         </figcaption>
       </figure>
 
+      <!-- A country's books appear directly under the map, so choosing one is
+           answered where you are looking instead of throwing you down the page. -->
+      <div class="country-panel" id="country-panel" hidden>
+        <div class="country-panel-head">
+          <div>
+            <h3 id="country-panel-heading"></h3>
+            <p class="country-panel-sub" id="country-panel-sub"></p>
+          </div>
+          <button type="button" id="country-clear" class="text-btn">Clear</button>
+        </div>
+        <ul class="book-cards" id="country-books"></ul>
+      </div>
+
       <!-- The map answers "how much of the world", but not "which ones" without
            hunting. This index does, and it is also the easy way to pick a small
            country, by keyboard or otherwise. -->
@@ -137,19 +157,6 @@
              infer them from the shading. -->
         <p class="coverage-note" id="coverage-note"></p>
       </div>
-    </div>
-  </section>
-
-  <section class="section section-panel" id="country-panel" aria-labelledby="country-panel-heading" hidden>
-    <div class="wrap">
-      <div class="section-head section-head-row">
-        <div>
-          <h2 id="country-panel-heading"></h2>
-          <p class="section-sub" id="country-panel-sub"></p>
-        </div>
-        <button type="button" id="country-clear" class="text-btn">Clear selection</button>
-      </div>
-      <ul class="book-cards" id="country-books"></ul>
     </div>
   </section>
 
@@ -229,6 +236,10 @@
         </table>
       </div>
       <p class="empty-note" id="empty-note" hidden>No books match those filters.</p>
+
+      <!-- On a phone the full list is a very long scroll, and only gets longer.
+           Show a recent handful and let people ask for the rest. -->
+      <button type="button" id="show-all-books" class="show-all" aria-controls="book-table" hidden></button>
     </div>
   </section>
 
