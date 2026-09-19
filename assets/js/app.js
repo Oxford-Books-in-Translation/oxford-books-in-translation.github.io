@@ -684,11 +684,12 @@ function buildFilters() {
 
 function setMapHint() {
   const coarse = window.matchMedia('(pointer: coarse)').matches;
-  // On a phone the countries are too small to hit reliably, so point at the
-  // list rather than pretending the map is the interface.
+  // Say that every country answers, not just the shaded ones — otherwise you
+  // would have to already know it to find out. On a phone the shapes are too
+  // small to hit reliably, so the list stays in the sentence.
   $('map-hint').textContent = coarse
-    ? 'Tap a country, or pick one from the list below. Pinch with two fingers to zoom.'
-    : 'Click a country for its books. Ctrl + scroll to zoom, drag to pan.';
+    ? 'Tap any country to name it; shaded ones open their books. Or pick one from the list below.'
+    : 'Hover or click any country to name it; shaded ones open their books. Ctrl + scroll to zoom, drag to pan.';
 }
 
 async function init() {

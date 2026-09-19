@@ -482,6 +482,8 @@ code {
   stroke: var(--surface);
   stroke-width: 0.5;
   vector-effect: non-scaling-stroke;
+  /* Every country answers to a click, not only the ones we've read. */
+  cursor: pointer;
 }
 
 /* Read countries carry a fine ink outline as well as a fill, so "we've read
@@ -498,18 +500,43 @@ code {
 .country.q4 { fill: var(--q4); }
 .country.q5 { fill: var(--q5); }
 
-.country.has-books:hover,
-.country.has-books:focus-visible,
+/* Pointing at any country picks it out, read or not. */
+.country:hover,
+.country:focus-visible,
+.country.is-named,
 .country.is-spotlit {
   stroke: var(--ink);
   stroke-width: 1.75;
   outline: none;
 }
 
+/* Selected is a stronger statement than named: it means the list below is
+   filtered to this country, which only a country with books can do. */
 .country.is-selected {
   stroke: var(--ink);
   stroke-width: 2.5;
   outline: none;
+}
+
+/* The name of whatever you last pointed at, pinned over the map. Paper and a
+   rule, like a key printed on a chart — not a floating card. */
+.map-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  max-width: min(14rem, 70%);
+  margin: 0;
+  padding: 0.2rem 0.45rem;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-s);
+  font-family: var(--text);
+  font-size: 0.8125rem;
+  line-height: 1.25;
+  /* It names what is underneath it, so it must never intercept the next tap. */
+  pointer-events: none;
 }
 
 /* Countries too small to have a polygon at this resolution get a point
@@ -525,7 +552,7 @@ code {
 .dot.q3 { fill: var(--q3); }
 .dot.q4 { fill: var(--q4); }
 .dot.q5 { fill: var(--q5); }
-.dot:hover, .dot:focus-visible, .dot.is-spotlit { stroke: var(--ink); outline: none; }
+.dot:hover, .dot:focus-visible, .dot.is-named, .dot.is-spotlit { stroke: var(--ink); outline: none; }
 .dot.is-selected { stroke: var(--ink); stroke-width: 3; }
 
 .sphere {

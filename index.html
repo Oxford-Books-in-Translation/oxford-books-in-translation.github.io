@@ -120,6 +120,11 @@
               books by authors of that nationality the group has read. Every value is
               also listed in the book list below.</desc>
           </svg>
+          <!-- Names the country you last pointed at, pinned over the map
+               itself. On a phone there is no hover, so this is the only way to
+               ask "what is that one?" — and the answer belongs next to the
+               shape, not in a tooltip somewhere else. -->
+          <p class="map-label" id="map-label" hidden aria-hidden="true"></p>
           <div class="map-buttons">
             <button type="button" id="zoom-in" class="icon-btn" aria-label="Zoom in">+</button>
             <button type="button" id="zoom-out" class="icon-btn" aria-label="Zoom out">&minus;</button>

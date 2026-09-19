@@ -136,6 +136,23 @@ changed enough to be worth it.
 No Pages workflow is needed — the repository is already a static site, and
 `.nojekyll` stops GitHub trying to process it as a Jekyll blog.
 
+### Naming a country vs selecting one
+
+These are deliberately two different things, because only one of them can apply
+to every country.
+
+- **Naming** answers "what is that one?". Every country does it, read or not —
+  hover on a pointer, tap on a touch screen. The answer appears as a label
+  pinned over the map next to the shape, and the shape is outlined while it's
+  named. Unread countries say "not read yet" rather than staying silent, which
+  is what made the map feel like only the shaded parts were really there.
+- **Selecting** means "filter the book list to this country", so only a country
+  with books can be selected. It draws a heavier outline and opens the panel of
+  that country's books beneath the map.
+
+Clicking an unread country therefore names it and leaves your filter alone.
+Clicking open sea clears the label.
+
 ## How the map handles awkward cases
 
 - **Several nationalities.** `FRA|DZA` counts the book for both countries, and
@@ -221,14 +238,16 @@ the whole world is 280px across, which makes Hungary 4.5×2.6px and South Korea
 3px — against a finger pad of forty-odd. Measured over a grid of 861 taps, only
 **3% of the map was a direct hit on a country we've read.** So:
 
-- **A tap near a country selects it.** The handler samples rings of points
-  outward from the tap, nearest first, and takes the closest country within
-  32px. That raises the share of taps that land from 3% to 39%, and the rest is
-  ocean and continents we haven't read, where doing nothing is the right
-  answer. It agrees with an exhaustive 1px search 95.5% of the time; the
-  disagreements are all between true neighbours, like Spain and France.
-  Bounding boxes reject hopeless taps before any probing, which keeps the
-  common case free and the worst case under 20ms.
+- **Every tap on land is answered**, because every country names itself. A tap
+  that lands on the neighbour of the one you meant says so, which is honest and
+  still tells you the map is working.
+- **A tap in the sea reaches for a country we've read**, up to 32px, so the
+  coast of a small read country is forgiving rather than dead. The handler
+  samples rings of points outward from the tap, nearest first. It agrees with
+  an exhaustive 1px search 95.5% of the time; the disagreements are all between
+  true neighbours, like Spain and France. Bounding boxes reject hopeless taps
+  before any probing, which keeps the common case free and the worst case under
+  20ms. A tap with nothing in range clears the label.
 - **A country's books appear directly under the map**, not further down the
   page, and the page only scrolls if that panel would otherwise be off screen.
   When it does scroll it aligns the *map*, not the panel — aligning the panel
@@ -263,9 +282,11 @@ are checked by `scripts/check-contrast.mjs` on every push.
   it would bury the rest of the page. The country index beneath the map is the
   easy way to reach a country without hunting for its shape, which matters most
   for the small ones drawn as dots.
-- **Screen readers.** Each country has a spoken label with its count, original
-  titles are tagged with their own language so pronunciation switches, and
-  right-to-left titles are marked as such.
+- **Screen readers.** Every country has a spoken label — with its count where
+  we've read it, its name alone where we haven't. Original titles are tagged
+  with their own language so pronunciation switches, and right-to-left titles
+  are marked as such. The map label is `aria-hidden`: it repeats what the
+  shape's own label already says, so announcing it twice would be noise.
 - **Target size.** A country's shape is a few pixels wide on a phone, far under
   the 24px of SC 2.5.8. Two exceptions apply and both are deliberately made
   true rather than assumed: the shapes are *essential* (a map whose countries

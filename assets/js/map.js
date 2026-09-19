@@ -98,8 +98,25 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
   const root = svg.append('g');
   root.append('path').attr('class', 'sphere').attr('d', path({ type: 'Sphere' }));
 
-  const describe = (entry) =>
-    `<b>${escapeHtml(entry.name)}</b><br>${entry.count} ${entry.count === 1 ? 'book' : 'books'}`;
+  /** The name we show for a shape, ours where we have it. */
+  const nameOf = (f) =>
+    (f.code && countries[f.code] && countries[f.code].name) || f.properties.name || 'Unnamed';
+
+  const countText = (n) => `${n} ${n === 1 ? 'book' : 'books'}`;
+
+  /**
+   * What to say about whatever is under the pointer. Every country answers,
+   * including the ones we haven't read — "what is that grey one?" is a fair
+   * question to ask a map, and leaving it unanswered made the shading look
+   * like the only thing on it.
+   */
+  function describe(d) {
+    const entry = entryOf(d);
+    const name = escapeHtml(entry ? entry.name : nameOf(d));
+    return entry
+      ? `<b>${name}</b><br>${countText(entry.count)}`
+      : `<b>${name}</b><br>Not read yet`;
+  }
 
   const shapes = root
     .append('g')
@@ -113,17 +130,15 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
         .join(' ');
     })
     .attr('d', path)
+    // Only the countries with books are in the tab order. Putting all 176 in
+    // it would bury the rest of the page, and the country index below the map
+    // is the equivalent control for reaching one without a pointer.
     .attr('tabindex', (f) => (f.code && byCountry.has(f.code) ? 0 : null))
     .attr('role', (f) => (f.code && byCountry.has(f.code) ? 'button' : null))
     .attr('aria-label', (f) => {
       const entry = f.code ? byCountry.get(f.code) : null;
-      return entry ? `${entry.name}, ${entry.count} ${entry.count === 1 ? 'book' : 'books'}` : null;
+      return entry ? `${entry.name}, ${countText(entry.count)}` : nameOf(f);
     });
-
-  shapes.append('title').text((f) => {
-    const entry = f.code ? byCountry.get(f.code) : null;
-    return entry ? `${entry.name} — ${entry.count} ${entry.count === 1 ? 'book' : 'books'}` : f.properties.name;
-  });
 
   const dots = root
     .append('g')
@@ -136,43 +151,96 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
     .attr('cy', (d) => projection(d.lonLat)[1])
     .attr('tabindex', 0)
     .attr('role', 'button')
-    .attr('aria-label', (d) => `${d.entry.name}, ${d.entry.count} ${d.entry.count === 1 ? 'book' : 'books'}`);
-
-  dots.append('title').text((d) => `${d.entry.name} — ${d.entry.count} ${d.entry.count === 1 ? 'book' : 'books'}`);
+    .attr('aria-label', (d) => `${d.entry.name}, ${countText(d.entry.count)}`);
 
   /* ---- interaction ---- */
 
   const entryOf = (d) => (d.entry ? d.entry : d.code ? byCountry.get(d.code) : null);
 
+  /* ---- naming a country ----
+     Separate from selecting one. Selecting means "filter the list to this
+     country" and only countries with books can do it; naming just answers
+     "what is that?", which every country can. The label is pinned over the
+     map rather than floating by the cursor, so it survives a finger lifting
+     off and reads as an answer about a place rather than a passing tooltip. */
+  const frame = svgEl.closest('.map-frame');
+  const labelEl = frame.querySelector('.map-label');
+
+  function clearName() {
+    labelEl.hidden = true;
+    shapes.classed('is-named', false);
+    dots.classed('is-named', false);
+  }
+
+  function nameCountry(node, d) {
+    const entry = entryOf(d);
+    const text = entry
+      ? `${entry.name} · ${countText(entry.count)}`
+      : `${nameOf(d)} · not read yet`;
+
+    shapes.classed('is-named', false);
+    dots.classed('is-named', false);
+    node.classList.add('is-named');
+
+    labelEl.textContent = text;
+    labelEl.hidden = false;
+
+    // Measured after it is shown and filled, or the width is stale and the
+    // label sits off-centre.
+    const frameBox = frame.getBoundingClientRect();
+    const svgBox = svgEl.getBoundingClientRect();
+    const box = node.getBoundingClientRect();
+    const own = labelEl.getBoundingClientRect();
+    const pad = 4;
+
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(v, hi));
+    const x = clamp(
+      box.left + box.width / 2 - frameBox.left - own.width / 2,
+      pad,
+      Math.max(pad, frameBox.width - own.width - pad),
+    );
+    // Above the country where there is room, below it otherwise, and never
+    // outside the map — the frame also holds the zoom buttons on a phone.
+    const above = box.top - frameBox.top - own.height - 6;
+    const below = box.bottom - frameBox.top + 6;
+    const top = svgBox.top - frameBox.top + pad;
+    const bottom = svgBox.bottom - frameBox.top - own.height - pad;
+    const y = clamp(above >= top ? above : below, top, Math.max(top, bottom));
+
+    labelEl.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+  }
+
+  function activate(node, d) {
+    nameCountry(node, d);
+    const entry = entryOf(d);
+    // Only a country we've actually read has a list to filter to.
+    if (entry) onSelect(entry.code);
+  }
+
+  // A finger fires pointerenter too, which would put a tooltip under the
+  // fingertip saying exactly what the map label already says. Touch gets the
+  // label; a pointer that can hover gets the tooltip. Tested per event rather
+  // than per device, so a laptop with both a mouse and a touchscreen behaves
+  // correctly for whichever one is being used.
+  const hovering = (event) => event.pointerType !== 'touch';
+
   function bindHandlers(selection) {
     selection
-      .on('pointerenter', (event, d) => {
-        const entry = entryOf(d);
-        if (entry) tooltip.show(describe(entry), event);
-      })
-      .on('pointermove', (event, d) => {
-        const entry = entryOf(d);
-        if (entry) tooltip.move(event);
-      })
+      .on('pointerenter', (event, d) => { if (hovering(event)) tooltip.show(describe(d), event); })
+      .on('pointermove', (event) => { if (hovering(event)) tooltip.move(event); })
       .on('pointerleave', () => tooltip.hide())
-      .on('focus', (event, d) => {
-        const entry = entryOf(d);
-        if (entry) tooltip.showAt(describe(entry), event.currentTarget);
-      })
+      .on('focus', (event, d) => tooltip.showAt(describe(d), event.currentTarget))
       .on('blur', () => tooltip.hide())
-      .on('click', (event, d) => {
-        const entry = entryOf(d);
-        if (entry) onSelect(entry.code);
-      })
+      .on('click', (event, d) => activate(event.currentTarget, d))
       .on('keydown', (event, d) => {
         if (event.key !== 'Enter' && event.key !== ' ') return;
         event.preventDefault();
-        const entry = entryOf(d);
-        if (entry) onSelect(entry.code);
+        activate(event.currentTarget, d);
       });
   }
 
-  bindHandlers(shapes.filter((f) => f.code && byCountry.has(f.code)));
+  // Every country, not just the ones we've read.
+  bindHandlers(shapes);
   bindHandlers(dots);
 
   /* ---- forgiving taps ----
@@ -182,12 +250,17 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
      at that size, and a tap that misses by 4px doing nothing reads as the map
      being broken rather than as a near miss.
 
-     So on a touch screen, a tap that lands near a country we've read selects
-     it. The search samples rings of real points outward from the tap and asks
-     the browser what is under each one, which is exact: it can't be fooled
-     the way a bounding box can, where a tap in the Atlantic falls "inside"
-     Russia because Russia's box spans the map. A tap with nothing within
-     32px still does nothing, so the ocean stays empty. */
+     Now that every country answers to a tap, a tap that lands on land is
+     always answered by the country it hit — honestly, even if that is the
+     neighbour of the one you were aiming for. This handler is for taps that
+     land in the sea: it reaches up to 32px for a country we've read, so the
+     coast of a small read country is forgiving rather than dead.
+
+     The search samples rings of real points outward from the tap and asks the
+     browser what is under each one, which is exact: it can't be fooled the
+     way a bounding box can, where a tap in the Atlantic falls "inside" Russia
+     because Russia's box spans the map. A tap with nothing within 32px
+     dismisses the label, so tapping open sea clears the map. */
   const SLOP = 32; // how far from the finger we will look, in CSS pixels
   const STEP = 2; // spacing between samples, radially and around each ring
 
@@ -199,9 +272,13 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
   }
 
   svgEl.addEventListener('click', (event) => {
-    if (!window.matchMedia('(pointer: coarse)').matches) return;
-    // A direct hit has already been dealt with by the country's own handler.
-    if (event.target.closest('.has-books, .dot')) return;
+    // A direct hit on any country has already been dealt with by its own
+    // handler, so what is left is the sea.
+    if (event.target.closest('.country, .dot')) return;
+    if (!window.matchMedia('(pointer: coarse)').matches) {
+      clearName(); // a mouse click on open sea puts the map back
+      return;
+    }
 
     // A tap with nothing anywhere near it — most of the ocean — would
     // otherwise search every ring before giving up, which is the slowest path
@@ -210,7 +287,10 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
     // never rule out a country that a probe would have found; it is only ever
     // used to decide whether probing is worth doing at all.
     const candidates = [...svgEl.querySelectorAll('.has-books, .dot')];
-    if (!candidates.some((n) => nearBox(n.getBoundingClientRect(), event.clientX, event.clientY))) return;
+    if (!candidates.some((n) => nearBox(n.getBoundingClientRect(), event.clientX, event.clientY))) {
+      clearName();
+      return;
+    }
 
     // Rings outward from the tap, nearest first, so the answer is the closest
     // country rather than merely a close one. The sampling has to be finer
@@ -231,11 +311,12 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
 
         const entry = entryOf(d3.select(hit).datum());
         if (entry) {
-          onSelect(entry.code);
+          activate(hit, d3.select(hit).datum());
           return;
         }
       }
     }
+    clearName();
   });
 
   /* ---- zoom ----
@@ -259,6 +340,9 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
       root.attr('transform', event.transform);
       dots.attr('r', 5 / scale);
       svgEl.classList.toggle('is-zoomed', scale > 1);
+      // The label is placed in screen coordinates, so panning would leave it
+      // pointing at open sea. Take it away rather than let it lie.
+      clearName();
     });
 
   svg.call(zoom).on('dblclick.zoom', null);
