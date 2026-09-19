@@ -1,7 +1,8 @@
-name: Validate books.csv
+name: Checks
 
-# Checks the data on every push and pull request, so a bad country code or a
-# misspelled language is caught before anyone opens the map.
+# Runs on every push and pull request, so a bad country code, a misspelled
+# language, or a palette change that breaks contrast is caught before anyone
+# opens the map.
 on:
   push:
     branches: [main]
@@ -18,6 +19,9 @@ jobs:
         with:
           node-version: '20'
 
-      # No dependencies to install — the validator is plain Node.
+      # No dependencies to install — both checks are plain Node.
       - name: Validate data/books.csv
         run: node scripts/validate-books.mjs
+
+      - name: Check colour contrast and colour-vision safety
+        run: node scripts/check-contrast.mjs

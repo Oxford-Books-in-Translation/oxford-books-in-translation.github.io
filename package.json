@@ -6,6 +6,8 @@
   "type": "module",
   "scripts": {
     "validate": "node scripts/validate-books.mjs",
+    "contrast": "node scripts/check-contrast.mjs",
+    "check": "npm run validate && npm run contrast",
     "serve": "node scripts/serve.mjs"
   }
 }

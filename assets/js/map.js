@@ -14,6 +14,40 @@ const MAX_BIN = 5;
 /** Geometries the boundary file gives no ISO id for, matched by name instead. */
 const BY_NAME = { Kosovo: 'UNK' };
 
+/**
+ * Overseas pieces drawn as part of the administering country, which on a
+ * choropleth only ever read as a mistake: shading France puts a green blob in
+ * South America, and nobody looking at it thinks "ah, French Guiana".
+ *
+ * This is a named list on purpose. The tempting version — "drop any piece far
+ * from the country's centre" — would also throw away Hawaii and Alaska from
+ * the United States, Kaliningrad from Russia, Tasmania from Australia,
+ * Svalbard from Norway and Newfoundland from Canada, all of which belong.
+ * Bounds are [west, south, east, north].
+ */
+const DETACHED = [
+  { code: 'FRA', name: 'French Guiana', bounds: [-56, 1, -51, 7] },
+];
+
+/** Drops the detached pieces above from a country's geometry. */
+function trimDetached(feature) {
+  const rules = DETACHED.filter((d) => d.code === feature.code);
+  if (!rules.length || feature.geometry.type !== 'MultiPolygon') return;
+
+  const inside = ([lon, lat], [w, s, e, n]) => lon >= w && lon <= e && lat >= s && lat <= n;
+  const centre = (ring) => {
+    let x = 0, y = 0;
+    for (const [lon, lat] of ring) { x += lon; y += lat; }
+    return [x / ring.length, y / ring.length];
+  };
+
+  const kept = feature.geometry.coordinates.filter(
+    (polygon) => !rules.some((rule) => inside(centre(polygon[0]), rule.bounds)),
+  );
+  // Never let a rule empty a country out entirely.
+  if (kept.length) feature.geometry.coordinates = kept;
+}
+
 export const BIN_LABELS = ['1', '2', '3', '4', '5+'];
 
 /** Books-in-country -> ramp step class. */
@@ -40,6 +74,7 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
   const features = all.filter((f) => String(f.id) !== ANTARCTICA);
   for (const feature of features) {
     feature.code = numericToCode.get(String(feature.id)) || BY_NAME[feature.properties.name] || null;
+    trimDetached(feature);
   }
 
   const drawn = new Set(features.map((f) => f.code).filter(Boolean));
@@ -177,6 +212,11 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
     highlight(code) {
       shapes.classed('is-selected', (f) => Boolean(code) && f.code === code);
       dots.classed('is-selected', (d) => d.entry.code === code);
+    },
+    /** Momentarily pick out a country — used when pointing at it in the list. */
+    spotlight(code) {
+      shapes.classed('is-spotlit', (f) => Boolean(code) && f.code === code);
+      dots.classed('is-spotlit', (d) => Boolean(code) && d.entry.code === code);
     },
     zoomIn() { ease(svg).call(zoom.scaleBy, 1.6); },
     zoomOut() { ease(svg).call(zoom.scaleBy, 1 / 1.6); },

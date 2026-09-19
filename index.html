@@ -6,6 +6,19 @@
 <title>Oxford Books in Translation — Reading Map</title>
 <meta name="description" content="An interactive map of every book our group has read: where the authors are from, and what language each book was written in.">
 <meta name="color-scheme" content="light dark">
+
+<!-- How the link looks when it's pasted into a chat or onto Meetup.
+     og:url and og:image are deliberately absent until the site has a real
+     address — a preview card needs absolute URLs, and a broken one looks
+     worse than none. See "Sharing the link" in the README. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Oxford Books in Translation">
+<meta property="og:title" content="Oxford Books in Translation — Reading Map">
+<meta property="og:description" content="Every book our group has read in translation, mapped: where each author is from, and the language the book was written in.">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Oxford Books in Translation — Reading Map">
+<meta name="twitter:description" content="Every book our group has read in translation, mapped: where each author is from, and the language the book was written in.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>📚</text></svg>">
 <link rel="stylesheet" href="assets/css/styles.css">
 </head>
@@ -13,16 +26,45 @@
 
 <a class="skip-link" href="#books">Skip to the book list</a>
 
-<header class="site-header">
-  <div class="wrap header-inner">
-    <div class="header-text">
-      <h1>Oxford Books in Translation</h1>
-      <p class="tagline">Every book we&rsquo;ve read, where its author is from, and the language it was written in.</p>
+<!-- Masthead: there is no brand to protect here, so it states what the page is
+     and gets out of the way. Title and tagline, one rule, then the figures and
+     the theme control sharing a single baseline row. -->
+<header class="masthead">
+  <div class="wrap">
+    <h1>Oxford Books in Translation</h1>
+    <p class="tagline">Every book we&rsquo;ve read, where its author is from,
+      and the language it was written in.</p>
+
+    <div class="colophon">
+      <div class="figures" aria-label="Summary">
+        <div class="figure">
+          <span class="figure-value" id="stat-books">&mdash;</span>
+          <span class="figure-label">Books read</span>
+        </div>
+        <div class="figure">
+          <span class="figure-value" id="stat-countries">&mdash;</span>
+          <span class="figure-label">Countries</span>
+        </div>
+        <div class="figure">
+          <span class="figure-value" id="stat-languages">&mdash;</span>
+          <span class="figure-label">Languages</span>
+        </div>
+        <div class="figure">
+          <span class="figure-value" id="stat-translators">&mdash;</span>
+          <span class="figure-label">Translators</span>
+        </div>
+      </div>
+      <div class="masthead-links">
+        <a class="masthead-link"
+           href="https://www.meetup.com/oxford-books-in-translation-reading-group/">Meetup
+          group<span class="external-mark" aria-hidden="true">&#8599;</span></a>
+        <button type="button" id="theme-toggle" class="theme-toggle" aria-live="polite">
+          <span class="theme-toggle-icon" aria-hidden="true"></span>
+          <span id="theme-toggle-label">Theme</span>
+        </button>
+      </div>
     </div>
-    <button type="button" id="theme-toggle" class="theme-toggle" aria-live="polite">
-      <span class="theme-toggle-icon" aria-hidden="true"></span>
-      <span id="theme-toggle-label">Theme</span>
-    </button>
+    <p class="figure-note" id="stat-countries-note"></p>
   </div>
 </header>
 
@@ -55,123 +97,139 @@
     </div>
   </noscript>
 
-  <section class="wrap stats" aria-label="Summary">
-    <div class="stat">
-      <span class="stat-label">Books read</span>
-      <span class="stat-value" id="stat-books">&mdash;</span>
-    </div>
-    <div class="stat">
-      <span class="stat-label">Countries covered</span>
-      <span class="stat-value" id="stat-countries">&mdash;</span>
-      <span class="stat-note" id="stat-countries-note"></span>
-    </div>
-    <div class="stat">
-      <span class="stat-label">Languages covered</span>
-      <span class="stat-value" id="stat-languages">&mdash;</span>
+  <section class="section" aria-labelledby="map-heading">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="section-number" aria-hidden="true">I</p>
+        <h2 id="map-heading">Where our authors are from</h2>
+        <p class="section-sub">Shaded by how many books we&rsquo;ve read by authors of
+          that nationality. Countries we haven&rsquo;t reached yet stay bare.</p>
+      </div>
+
+      <figure class="map-figure">
+        <div class="map-frame">
+          <svg id="map" role="img" aria-labelledby="map-heading map-desc">
+            <desc id="map-desc">A world map with countries shaded according to how many
+              books by authors of that nationality the group has read. Every value is
+              also listed in the book list below.</desc>
+          </svg>
+          <div class="map-buttons">
+            <button type="button" id="zoom-in" class="icon-btn" aria-label="Zoom in">+</button>
+            <button type="button" id="zoom-out" class="icon-btn" aria-label="Zoom out">&minus;</button>
+            <button type="button" id="zoom-reset" class="icon-btn" aria-label="Reset the map view">Reset</button>
+          </div>
+        </div>
+
+        <figcaption class="map-foot">
+          <div id="legend" class="legend"></div>
+          <p class="map-hint" id="map-hint"></p>
+        </figcaption>
+      </figure>
+
+      <!-- The map answers "how much of the world", but not "which ones" without
+           hunting. This index does, and it is also the easy way to pick a small
+           country, by keyboard or otherwise. -->
+      <div class="index-block">
+        <h3 class="index-heading" id="country-index-heading">Countries read</h3>
+        <ul class="index-list" id="country-index" aria-labelledby="country-index-heading"></ul>
+        <!-- The blank parts of the map are the interesting bit for a group
+             reading the world, so say them out loud rather than making people
+             infer them from the shading. -->
+        <p class="coverage-note" id="coverage-note"></p>
+      </div>
     </div>
   </section>
 
-  <section class="wrap card" aria-labelledby="map-heading">
-    <div class="card-head">
-      <h2 id="map-heading">Where our authors are from</h2>
-      <p class="card-sub">Shaded by number of books. Select a country to see its books.</p>
-    </div>
-
-    <div class="map-frame">
-      <svg id="map" role="img" aria-labelledby="map-heading map-desc">
-        <desc id="map-desc">A world map with countries shaded according to how many
-          books by authors of that nationality the group has read. Every value is
-          also listed in the book list below.</desc>
-      </svg>
-      <div class="map-buttons">
-        <button type="button" id="zoom-in" class="icon-btn" aria-label="Zoom in">+</button>
-        <button type="button" id="zoom-out" class="icon-btn" aria-label="Zoom out">&minus;</button>
-        <button type="button" id="zoom-reset" class="icon-btn" aria-label="Reset the map view">Reset</button>
+  <section class="section section-panel" id="country-panel" aria-labelledby="country-panel-heading" hidden>
+    <div class="wrap">
+      <div class="section-head section-head-row">
+        <div>
+          <h2 id="country-panel-heading"></h2>
+          <p class="section-sub" id="country-panel-sub"></p>
+        </div>
+        <button type="button" id="country-clear" class="text-btn">Clear selection</button>
       </div>
-    </div>
-
-    <div class="map-foot">
-      <div id="legend" class="legend"></div>
-      <p class="map-hint" id="map-hint"></p>
+      <ul class="book-cards" id="country-books"></ul>
     </div>
   </section>
 
-  <section class="wrap card" id="country-panel" aria-labelledby="country-panel-heading" hidden>
-    <div class="card-head card-head-row">
-      <div>
-        <h2 id="country-panel-heading"></h2>
-        <p class="card-sub" id="country-panel-sub"></p>
+  <section class="section" aria-labelledby="languages-heading">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="section-number" aria-hidden="true">II</p>
+        <h2 id="languages-heading">Original languages</h2>
+        <p class="section-sub" id="languages-sub">Every language we&rsquo;ve read in,
+          by number of books.</p>
       </div>
-      <button type="button" id="country-clear" class="text-btn">Clear selection</button>
+      <ul class="languages" id="languages"></ul>
+
+      <!-- In a group about translation the translator is half the book, so
+           they get a roll-call of their own rather than only a table column. -->
+      <div class="index-block">
+        <h3 class="index-heading" id="translator-index-heading">Translators</h3>
+        <ul class="index-list" id="translator-index" aria-labelledby="translator-index-heading"></ul>
+      </div>
     </div>
-    <ul class="book-cards" id="country-books"></ul>
   </section>
 
-  <section class="wrap card" aria-labelledby="languages-heading">
-    <div class="card-head">
-      <h2 id="languages-heading">Original languages</h2>
-      <p class="card-sub" id="languages-sub">Every language we&rsquo;ve read in, by number of books.</p>
-    </div>
-    <ul class="languages" id="languages"></ul>
-  </section>
-
-  <section class="wrap card" id="books" aria-labelledby="books-heading">
-    <div class="card-head">
-      <h2 id="books-heading">All books</h2>
-      <p class="card-sub">The full list. Filters and sorting apply to this table only &mdash;
-        the map and the totals above always show everything.</p>
-    </div>
-
-    <div class="filters">
-      <div class="field">
-        <label for="filter-search">Search</label>
-        <input type="search" id="filter-search" placeholder="Title, author or translator" autocomplete="off">
+  <section class="section" id="books" aria-labelledby="books-heading">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="section-number" aria-hidden="true">III</p>
+        <h2 id="books-heading">The books</h2>
+        <p class="section-sub">Filters and sorting apply to this list only &mdash;
+          the map and the figures above always show everything.</p>
       </div>
-      <div class="field">
-        <label for="filter-country">Country</label>
-        <select id="filter-country"><option value="">All countries</option></select>
-      </div>
-      <div class="field">
-        <label for="filter-language">Language</label>
-        <select id="filter-language"><option value="">All languages</option></select>
-      </div>
-      <div class="field">
-        <label for="filter-sort">Sort by</label>
-        <select id="filter-sort">
-          <option value="date-desc">Date discussed (newest)</option>
-          <option value="date-asc">Date discussed (oldest)</option>
-          <option value="title-asc">Title (A&ndash;Z)</option>
-          <option value="author-asc">Author (A&ndash;Z)</option>
-          <option value="country-asc">Country (A&ndash;Z)</option>
-          <option value="language-asc">Language (A&ndash;Z)</option>
-          <option value="year-asc">Year published (oldest)</option>
-          <option value="year-desc">Year published (newest)</option>
-        </select>
-      </div>
-      <button type="button" id="filter-clear" class="text-btn">Clear filters</button>
-    </div>
 
-    <p class="result-count" id="result-count" role="status"></p>
+      <div class="filters">
+        <div class="field">
+          <label for="filter-search">Search</label>
+          <input type="search" id="filter-search" placeholder="Title, author or translator" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="filter-country">Country</label>
+          <select id="filter-country"><option value="">All countries</option></select>
+        </div>
+        <div class="field">
+          <label for="filter-language">Language</label>
+          <select id="filter-language"><option value="">All languages</option></select>
+        </div>
+        <div class="field">
+          <label for="filter-sort">Sort by</label>
+          <select id="filter-sort">
+            <option value="date-desc">Date discussed (newest)</option>
+            <option value="date-asc">Date discussed (oldest)</option>
+            <option value="title-asc">Title (A&ndash;Z)</option>
+            <option value="author-asc">Author (A&ndash;Z)</option>
+            <option value="country-asc">Country (A&ndash;Z)</option>
+            <option value="language-asc">Language (A&ndash;Z)</option>
+            <option value="year-asc">Year published (oldest)</option>
+            <option value="year-desc">Year published (newest)</option>
+          </select>
+        </div>
+        <button type="button" id="filter-clear" class="text-btn">Clear filters</button>
+      </div>
 
-    <div class="table-scroll">
-      <table class="book-table" id="book-table">
-        <caption class="visually-hidden">Books read by the group, with author nationality,
-          original language, translator, year of publication and the date we discussed it.</caption>
-        <thead>
-          <tr>
-            <th scope="col">Title</th>
-            <th scope="col">Author</th>
-            <th scope="col">Country</th>
-            <th scope="col">Language</th>
-            <th scope="col">Translator</th>
-            <th scope="col" class="num">Published</th>
-            <th scope="col">Discussed</th>
-          </tr>
-        </thead>
-        <tbody id="book-tbody"></tbody>
-      </table>
+      <p class="result-count" id="result-count" role="status"></p>
+
+      <div class="table-scroll">
+        <table class="book-table" id="book-table">
+          <caption class="visually-hidden">Books read by the group, with author,
+            translator, nationality, original language, year of publication and the
+            date we discussed it.</caption>
+          <thead>
+            <tr>
+              <th scope="col">Book</th>
+              <th scope="col">Author &amp; translator</th>
+              <th scope="col">Origin</th>
+              <th scope="col">Discussed</th>
+            </tr>
+          </thead>
+          <tbody id="book-tbody"></tbody>
+        </table>
+      </div>
+      <p class="empty-note" id="empty-note" hidden>No books match those filters.</p>
     </div>
-    <p class="empty-note" id="empty-note" hidden>No books match those filters.</p>
   </section>
 
 </main>
@@ -180,8 +238,9 @@
   <div class="wrap">
     <p>
       <span id="footer-count"></span>
-      To add a book, add a row to <code>data/books.csv</code> and push &mdash; the map
-      updates itself.
+      Meeting dates and everything else live on our
+      <a href="https://www.meetup.com/oxford-books-in-translation-reading-group/">Meetup
+        group<span class="external-mark" aria-hidden="true">&#8599;</span></a>.
     </p>
   </div>
 </footer>

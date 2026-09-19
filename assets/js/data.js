@@ -44,6 +44,7 @@ export async function loadData() {
     topology,
     byCountry: groupByCountry(books, countries),
     byLanguage: groupByLanguage(books),
+    byTranslator: groupByTranslator(books),
     // The site draws no distinction: both are things for a human to look at.
     warnings: [...errors, ...columnCheck.warnings, ...warnings],
   };
@@ -74,6 +75,74 @@ function groupByLanguage(books) {
   // Most-read first: the interesting end of the list.
   return new Map(
     [...map.entries()].sort((a, b) => b[1].count - a[1].count || a[0].localeCompare(b[0])),
+  );
+}
+
+/**
+ * Language names from the CSV mapped to BCP 47 tags, so an original title can
+ * be marked up in its own language (WCAG 3.1.2) and a screen reader switches
+ * pronunciation instead of reading Hungarian as English.
+ */
+const LANGUAGE_TAGS = {
+  afrikaans: 'af', albanian: 'sq', amharic: 'am', arabic: 'ar', armenian: 'hy',
+  azerbaijani: 'az', basque: 'eu', belarusian: 'be', bengali: 'bn', bosnian: 'bs',
+  bulgarian: 'bg', burmese: 'my', catalan: 'ca', chinese: 'zh', croatian: 'hr',
+  czech: 'cs', danish: 'da', dutch: 'nl', english: 'en', estonian: 'et',
+  finnish: 'fi', french: 'fr', galician: 'gl', georgian: 'ka', german: 'de',
+  greek: 'el', gujarati: 'gu', hebrew: 'he', hindi: 'hi', hungarian: 'hu',
+  icelandic: 'is', indonesian: 'id', irish: 'ga', italian: 'it', japanese: 'ja',
+  kannada: 'kn', kazakh: 'kk', khmer: 'km', korean: 'ko', kurdish: 'ku',
+  lao: 'lo', latin: 'la', latvian: 'lv', lithuanian: 'lt', macedonian: 'mk',
+  malay: 'ms', malayalam: 'ml', maltese: 'mt', marathi: 'mr', mongolian: 'mn',
+  nepali: 'ne', norwegian: 'no', persian: 'fa', polish: 'pl', portuguese: 'pt',
+  punjabi: 'pa', romanian: 'ro', russian: 'ru', serbian: 'sr', sinhala: 'si',
+  slovak: 'sk', slovenian: 'sl', somali: 'so', spanish: 'es', swahili: 'sw',
+  swedish: 'sv', tagalog: 'tl', tamil: 'ta', telugu: 'te', thai: 'th',
+  tibetan: 'bo', turkish: 'tr', ukrainian: 'uk', urdu: 'ur', vietnamese: 'vi',
+  welsh: 'cy', yiddish: 'yi',
+};
+
+const RTL_TAGS = new Set(['ar', 'he', 'fa', 'ur', 'yi', 'ps', 'sd', 'ku']);
+
+/** BCP 47 tag for a language name, or null if we don't recognise it. */
+export function languageTag(name) {
+  return LANGUAGE_TAGS[name.trim().toLowerCase()] || null;
+}
+
+/** Whether a BCP 47 tag is written right to left. */
+export function isRightToLeft(tag) {
+  return RTL_TAGS.has(tag);
+}
+
+/**
+ * A book can credit more than one translator. They're written as ordinary
+ * prose in the CSV — "Ann Goldstein" or "William Hutchins and Olive Kenny" or
+ * a comma-separated pair — so split on commas and "and". This assumes names
+ * are written forename-first; "Goldstein, Ann" would come apart into two.
+ */
+function splitTranslators(text) {
+  return text
+    .split(/,| and /i)
+    .map((name) => name.trim())
+    .filter(Boolean);
+}
+
+function groupByTranslator(books) {
+  const map = new Map();
+  for (const book of books) {
+    for (const name of splitTranslators(book.translator)) {
+      if (!map.has(name)) map.set(name, { name, books: [] });
+      map.get(name).books.push(book);
+    }
+  }
+  for (const entry of map.values()) entry.count = entry.books.length;
+  // Most-translated first, then alphabetically by surname-ish (last word).
+  return new Map(
+    [...map.entries()].sort((a, b) => {
+      if (b[1].count !== a[1].count) return b[1].count - a[1].count;
+      const surname = (n) => n.split(' ').pop();
+      return surname(a[0]).localeCompare(surname(b[0]));
+    }),
   );
 }
 

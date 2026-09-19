@@ -7,7 +7,7 @@
  * and the table can never disagree with each other.
  */
 
-import { loadData, countryNames, formatDate } from './data.js';
+import { loadData, countryNames, formatDate, languageTag, isRightToLeft } from './data.js';
 import { createMap, binClass, BIN_LABELS } from './map.js';
 
 const $ = (id) => document.getElementById(id);
@@ -118,6 +118,7 @@ function renderStats() {
   $('stat-books').textContent = data.books.length;
   $('stat-countries').textContent = data.byCountry.size;
   $('stat-languages').textContent = data.byLanguage.size;
+  $('stat-translators').textContent = data.byTranslator.size;
 
   const pointOnly = map.pointOnlyCodes.length;
   $('stat-countries-note').textContent = pointOnly
@@ -163,6 +164,120 @@ function renderLegend() {
       el('span', { text: 'Not yet read' }),
     ]),
   );
+}
+
+/* ------------------------------------------------------- coverage note */
+
+// Antarctica has no nationality to read, so it is not a gap.
+const READABLE_REGIONS = ['Europe', 'Asia', 'Africa', 'Americas', 'Oceania'];
+const REGION_LABEL = { Americas: 'the Americas' };
+const label = (region) => REGION_LABEL[region] || region;
+
+const WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven',
+  'eight', 'nine', 'ten', 'eleven', 'twelve'];
+const spell = (n) => (n < WORDS.length ? WORDS[n] : String(n));
+
+const listFormat = (type) => new Intl.ListFormat('en-GB', { style: 'long', type });
+
+/**
+ * A sentence naming what the map covers and, more to the point, what it
+ * doesn't. The empty continents are the reading prompt.
+ */
+function renderCoverageNote() {
+  const counts = new Map();
+  for (const entry of data.byCountry.values()) {
+    const region = entry.meta.region;
+    if (!READABLE_REGIONS.includes(region)) continue;
+    counts.set(region, (counts.get(region) || 0) + 1);
+  }
+
+  const covered = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const missing = READABLE_REGIONS.filter((region) => !counts.has(region));
+
+  const parts = [];
+  if (covered.length) {
+    const phrases = covered.map(([region, n], i) =>
+      i === 0
+        ? `${spell(n)} ${n === 1 ? 'country' : 'countries'} in ${label(region)}`
+        : `${spell(n)} in ${label(region)}`);
+    parts.push(`${listFormat('conjunction').format(phrases)}.`);
+  }
+  parts.push(missing.length
+    ? `Nothing yet from ${listFormat('disjunction').format(missing.map(label))}.`
+    : 'Every part of the world is on the map.');
+
+  const note = $('coverage-note');
+  note.textContent = parts.join(' ');
+  // Capitalise the opening of the sentence without fighting the data.
+  note.textContent = note.textContent.charAt(0).toUpperCase() + note.textContent.slice(1);
+}
+
+/* --------------------------------------------------------- country index */
+
+/**
+ * The countries, in full, beneath the map. Most-read first, then alphabetical.
+ * Each row carries the country's own shade from the map, which is what ties
+ * the list to the picture.
+ */
+function renderCountryIndex() {
+  const list = $('country-index');
+  list.replaceChildren();
+
+  const entries = [...data.byCountry.values()]
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+
+  for (const entry of entries) {
+    const button = el('button', {
+      type: 'button',
+      class: 'index-row has-swatch',
+      'data-code': entry.code,
+      'aria-pressed': String(state.country === entry.code),
+    }, [
+      el('span', { class: `country-swatch ${binClass(entry.count)}`, 'aria-hidden': 'true' }),
+      el('span', { class: 'index-name', text: entry.name }),
+      el('span', { class: 'index-count', text: String(entry.count) }),
+    ]);
+
+    button.addEventListener('click', () => selectCountry(entry.code, { scroll: true }));
+    // Pointing at a row picks the country out on the map, so the list and the
+    // picture read as one thing.
+    button.addEventListener('pointerenter', () => map.spotlight(entry.code));
+    button.addEventListener('focus', () => map.spotlight(entry.code));
+    button.addEventListener('pointerleave', () => map.spotlight(null));
+    button.addEventListener('blur', () => map.spotlight(null));
+
+    list.append(el('li', {}, [button]));
+  }
+}
+
+/* ------------------------------------------------------ translator index */
+
+/**
+ * The translators, most-translated first. Selecting one searches for their
+ * name, which reuses the existing search rather than inventing another filter.
+ */
+function renderTranslators() {
+  const list = $('translator-index');
+  list.replaceChildren();
+
+  for (const entry of data.byTranslator.values()) {
+    const button = el('button', {
+      type: 'button',
+      class: 'index-row',
+      'data-translator': entry.name,
+      'aria-pressed': String(state.search === entry.name),
+    }, [
+      el('span', { class: 'index-name', text: entry.name }),
+      el('span', { class: 'index-count', text: String(entry.count) }),
+    ]);
+
+    button.addEventListener('click', () => {
+      setState({ search: state.search === entry.name ? '' : entry.name });
+      $('books').scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' });
+    });
+
+    list.append(el('li', {}, [button]));
+  }
 }
 
 /* -------------------------------------------------------------- languages */
@@ -269,8 +384,9 @@ function cell(label, value, extraClass = '') {
   return node;
 }
 
-function countryCell(book) {
-  const node = el('td', { 'data-label': 'Country' });
+/** Country (clickable) and original language, as one "Origin" cell. */
+function originCell(book) {
+  const node = el('td', { 'data-label': 'Origin' });
   const parts = [];
 
   book.nationalities.forEach((code) => {
@@ -283,7 +399,12 @@ function countryCell(book) {
     parts.push(button);
   });
   book.badCodes.forEach((code) => {
-    parts.push(el('span', { class: 'code-bad', title: 'Not a valid ISO 3166-1 alpha-3 code', text: code }));
+    // Stated in words rather than by colour: the marker is neither red nor
+    // underlined, so it can't be mistaken for a link.
+    parts.push(el('span', { class: 'code-bad' }, [
+      document.createTextNode(code),
+      el('span', { class: 'code-bad-note', text: ' (invalid code)' }),
+    ]));
   });
 
   if (!parts.length) {
@@ -296,6 +417,9 @@ function countryCell(book) {
     if (index) node.append(document.createTextNode(', '));
     node.append(part);
   });
+  if (book.language) {
+    node.append(el('span', { class: 'book-sub', text: book.language }));
+  }
   return node;
 }
 
@@ -305,24 +429,46 @@ function renderTable() {
   body.replaceChildren();
 
   for (const book of books) {
-    const title = el('td', { 'data-label': 'Title', class: 'cell-title' }, [
+    /* The book is the subject of the row: title in the display face, with its
+       original title and year as a quiet line beneath. */
+    const title = el('td', { 'data-label': 'Book', class: 'cell-title' }, [
       el('span', { class: 'book-title', text: book.title }),
     ]);
-    if (book.originalTitle && book.originalTitle !== book.title) {
-      title.append(el('span', { class: 'book-original', text: book.originalTitle }));
+
+    const hasOriginal = book.originalTitle && book.originalTitle !== book.title;
+    if (hasOriginal || book.year) {
+      const meta = el('span', { class: 'book-meta' });
+      if (hasOriginal) {
+        // Mark the original title up in its own language so assistive tech
+        // pronounces it correctly and right-to-left scripts lay out properly.
+        const tag = languageTag(book.language);
+        meta.append(el('span', {
+          text: book.originalTitle,
+          lang: tag,
+          dir: tag && isRightToLeft(tag) ? 'rtl' : null,
+        }));
+      }
+      if (hasOriginal && book.year) meta.append(document.createTextNode(' · '));
+      if (book.year) meta.append(document.createTextNode(book.year));
+      title.append(meta);
     }
+
     if (book.notes) {
       title.append(el('span', { class: 'book-notes', text: book.notes }));
     }
 
+    const author = el('td', { 'data-label': 'Author' }, [
+      document.createTextNode(book.author || '—'),
+    ]);
+    if (book.translator) {
+      author.append(el('span', { class: 'book-sub', text: `tr. ${book.translator}` }));
+    }
+
     body.append(el('tr', {}, [
       title,
-      cell('Author', book.author),
-      countryCell(book),
-      cell('Language', book.language),
-      cell('Translator', book.translator),
-      cell('Published', book.year, 'num'),
-      cell('Discussed', formatDate(book)),
+      author,
+      originCell(book),
+      cell('Discussed', formatDate(book), 'cell-when'),
     ]));
   }
 
@@ -356,6 +502,14 @@ function setState(patch, options = {}) {
   for (const button of document.querySelectorAll('.language-row')) {
     const name = button.querySelector('.language-name').textContent;
     button.setAttribute('aria-pressed', String(name === state.language));
+  }
+
+  for (const button of document.querySelectorAll('.index-row[data-code]')) {
+    button.setAttribute('aria-pressed', String(button.dataset.code === state.country));
+  }
+
+  for (const button of document.querySelectorAll('.index-row[data-translator]')) {
+    button.setAttribute('aria-pressed', String(button.dataset.translator === state.search));
   }
 
   map.highlight(state.country);
@@ -482,6 +636,9 @@ async function init() {
 
   renderStats();
   renderLegend();
+  renderCountryIndex();
+  renderCoverageNote();
+  renderTranslators();
   renderLanguages();
   buildFilters();
   renderWarnings(data.warnings);
