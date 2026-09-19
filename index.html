@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oxford Books in Translation — Reading Map</title>
+<meta name="description" content="An interactive map of every book our group has read: where the authors are from, and what language each book was written in.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>📚</text></svg>">
+<link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+
+<a class="skip-link" href="#books">Skip to the book list</a>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <div class="header-text">
+      <h1>Oxford Books in Translation</h1>
+      <p class="tagline">Every book we&rsquo;ve read, where its author is from, and the language it was written in.</p>
+    </div>
+    <button type="button" id="theme-toggle" class="theme-toggle" aria-live="polite">
+      <span class="theme-toggle-icon" aria-hidden="true"></span>
+      <span id="theme-toggle-label">Theme</span>
+    </button>
+  </div>
+</header>
+
+<main>
+
+  <!-- Data-loading failures surface here rather than leaving a blank page. -->
+  <div class="wrap" id="error-slot" hidden>
+    <div class="banner banner-error" role="alert">
+      <h2>The book data couldn&rsquo;t be loaded</h2>
+      <p id="error-detail"></p>
+    </div>
+  </div>
+
+  <!-- Bad ISO codes and inconsistent language names are shown on the site too,
+       so a typo in the CSV is visible without running the validator. -->
+  <div class="wrap" id="warning-slot" hidden>
+    <div class="banner banner-warn" role="status">
+      <h2 id="warning-title"></h2>
+      <ul id="warning-list"></ul>
+    </div>
+  </div>
+
+  <noscript>
+    <div class="wrap">
+      <div class="banner banner-warn">
+        <h2>JavaScript is switched off</h2>
+        <p>The map and book list need JavaScript. The raw data is readable as a
+          spreadsheet at <code>data/books.csv</code> in the repository.</p>
+      </div>
+    </div>
+  </noscript>
+
+  <section class="wrap stats" aria-label="Summary">
+    <div class="stat">
+      <span class="stat-label">Books read</span>
+      <span class="stat-value" id="stat-books">&mdash;</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Countries covered</span>
+      <span class="stat-value" id="stat-countries">&mdash;</span>
+      <span class="stat-note" id="stat-countries-note"></span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Languages covered</span>
+      <span class="stat-value" id="stat-languages">&mdash;</span>
+    </div>
+  </section>
+
+  <section class="wrap card" aria-labelledby="map-heading">
+    <div class="card-head">
+      <h2 id="map-heading">Where our authors are from</h2>
+      <p class="card-sub">Shaded by number of books. Select a country to see its books.</p>
+    </div>
+
+    <div class="map-frame">
+      <svg id="map" role="img" aria-labelledby="map-heading map-desc">
+        <desc id="map-desc">A world map with countries shaded according to how many
+          books by authors of that nationality the group has read. Every value is
+          also listed in the book list below.</desc>
+      </svg>
+      <div class="map-buttons">
+        <button type="button" id="zoom-in" class="icon-btn" aria-label="Zoom in">+</button>
+        <button type="button" id="zoom-out" class="icon-btn" aria-label="Zoom out">&minus;</button>
+        <button type="button" id="zoom-reset" class="icon-btn" aria-label="Reset the map view">Reset</button>
+      </div>
+    </div>
+
+    <div class="map-foot">
+      <div id="legend" class="legend"></div>
+      <p class="map-hint" id="map-hint"></p>
+    </div>
+  </section>
+
+  <section class="wrap card" id="country-panel" aria-labelledby="country-panel-heading" hidden>
+    <div class="card-head card-head-row">
+      <div>
+        <h2 id="country-panel-heading"></h2>
+        <p class="card-sub" id="country-panel-sub"></p>
+      </div>
+      <button type="button" id="country-clear" class="text-btn">Clear selection</button>
+    </div>
+    <ul class="book-cards" id="country-books"></ul>
+  </section>
+
+  <section class="wrap card" aria-labelledby="languages-heading">
+    <div class="card-head">
+      <h2 id="languages-heading">Original languages</h2>
+      <p class="card-sub" id="languages-sub">Every language we&rsquo;ve read in, by number of books.</p>
+    </div>
+    <ul class="languages" id="languages"></ul>
+  </section>
+
+  <section class="wrap card" id="books" aria-labelledby="books-heading">
+    <div class="card-head">
+      <h2 id="books-heading">All books</h2>
+      <p class="card-sub">The full list. Filters and sorting apply to this table only &mdash;
+        the map and the totals above always show everything.</p>
+    </div>
+
+    <div class="filters">
+      <div class="field">
+        <label for="filter-search">Search</label>
+        <input type="search" id="filter-search" placeholder="Title, author or translator" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="filter-country">Country</label>
+        <select id="filter-country"><option value="">All countries</option></select>
+      </div>
+      <div class="field">
+        <label for="filter-language">Language</label>
+        <select id="filter-language"><option value="">All languages</option></select>
+      </div>
+      <div class="field">
+        <label for="filter-sort">Sort by</label>
+        <select id="filter-sort">
+          <option value="date-desc">Date discussed (newest)</option>
+          <option value="date-asc">Date discussed (oldest)</option>
+          <option value="title-asc">Title (A&ndash;Z)</option>
+          <option value="author-asc">Author (A&ndash;Z)</option>
+          <option value="country-asc">Country (A&ndash;Z)</option>
+          <option value="language-asc">Language (A&ndash;Z)</option>
+          <option value="year-asc">Year published (oldest)</option>
+          <option value="year-desc">Year published (newest)</option>
+        </select>
+      </div>
+      <button type="button" id="filter-clear" class="text-btn">Clear filters</button>
+    </div>
+
+    <p class="result-count" id="result-count" role="status"></p>
+
+    <div class="table-scroll">
+      <table class="book-table" id="book-table">
+        <caption class="visually-hidden">Books read by the group, with author nationality,
+          original language, translator, year of publication and the date we discussed it.</caption>
+        <thead>
+          <tr>
+            <th scope="col">Title</th>
+            <th scope="col">Author</th>
+            <th scope="col">Country</th>
+            <th scope="col">Language</th>
+            <th scope="col">Translator</th>
+            <th scope="col" class="num">Published</th>
+            <th scope="col">Discussed</th>
+          </tr>
+        </thead>
+        <tbody id="book-tbody"></tbody>
+      </table>
+    </div>
+    <p class="empty-note" id="empty-note" hidden>No books match those filters.</p>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p>
+      <span id="footer-count"></span>
+      To add a book, add a row to <code>data/books.csv</code> and push &mdash; the map
+      updates itself.
+    </p>
+  </div>
+</footer>
+
+<div id="tooltip" class="tooltip" hidden aria-hidden="true"></div>
+
+<script defer src="vendor/d3.min.js"></script>
+<script defer src="vendor/topojson-client.min.js"></script>
+<script type="module" src="assets/js/app.js"></script>
+
+</body>
+</html>

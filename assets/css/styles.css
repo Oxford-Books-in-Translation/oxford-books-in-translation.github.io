@@ -1,0 +1,724 @@
+/* ==========================================================================
+   Oxford Books in Translation — reading map
+   Colour tokens come from a validated palette: chrome/ink from the reference
+   set, and the choropleth from a single-hue blue ramp (light->dark in light
+   mode, dark->light in dark mode, so "few books" always sits nearest the
+   surface). Each mode's steps are selected for that mode, not flipped.
+   ========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  --plane:        #f9f9f7;
+  --surface:      #fcfcfb;
+  --ink:          #0b0b0b;
+  --ink-2:        #52514e;
+  --muted:        #898781;
+  --rule:         #e1e0d9;
+  --axis:         #c3c2b7;
+  --border:       rgba(11, 11, 11, 0.10);
+  --accent:       #2a78d6;
+  --accent-wash:  rgba(42, 120, 214, 0.10);
+  --warn-wash:    rgba(250, 178, 25, 0.12);
+  --warn-edge:    #fab219;
+  --error-wash:   rgba(208, 59, 59, 0.10);
+  --error-edge:   #d03b3b;
+
+  /* Choropleth: 0 books, then 1, 2, 3, 4, 5+ */
+  --q0: #e1e0d9;
+  --q1: #86b6ef;
+  --q2: #5598e7;
+  --q3: #2a78d6;
+  --q4: #1c5cab;
+  --q5: #104281;
+
+  --shadow: 0 1px 2px rgba(11, 11, 11, 0.04), 0 1px 12px rgba(11, 11, 11, 0.04);
+
+  --radius:   10px;
+  --radius-s: 6px;
+  --wrap:     1120px;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+
+    --plane:        #0d0d0d;
+    --surface:      #1a1a19;
+    --ink:          #ffffff;
+    --ink-2:        #c3c2b7;
+    --muted:        #898781;
+    --rule:         #2c2c2a;
+    --axis:         #383835;
+    --border:       rgba(255, 255, 255, 0.10);
+    --accent:       #3987e5;
+    --accent-wash:  rgba(57, 135, 229, 0.16);
+    --warn-wash:    rgba(250, 178, 25, 0.14);
+    --error-wash:   rgba(208, 59, 59, 0.16);
+
+    --q0: #2c2c2a;
+    --q1: #184f95;
+    --q2: #256abf;
+    --q3: #3987e5;
+    --q4: #6da7ec;
+    --q5: #9ec5f4;
+
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 12px rgba(0, 0, 0, 0.3);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --plane:        #0d0d0d;
+  --surface:      #1a1a19;
+  --ink:          #ffffff;
+  --ink-2:        #c3c2b7;
+  --muted:        #898781;
+  --rule:         #2c2c2a;
+  --axis:         #383835;
+  --border:       rgba(255, 255, 255, 0.10);
+  --accent:       #3987e5;
+  --accent-wash:  rgba(57, 135, 229, 0.16);
+  --warn-wash:    rgba(250, 178, 25, 0.14);
+  --error-wash:   rgba(208, 59, 59, 0.16);
+
+  --q0: #2c2c2a;
+  --q1: #184f95;
+  --q2: #256abf;
+  --q3: #3987e5;
+  --q4: #6da7ec;
+  --q5: #9ec5f4;
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 12px rgba(0, 0, 0, 0.3);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--plane);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+h1, h2, h3 { line-height: 1.25; margin: 0; font-weight: 600; }
+
+a { color: var(--accent); }
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.875em;
+  background: var(--rule);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+
+:where(a, button, input, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-s);
+}
+
+.wrap {
+  max-width: var(--wrap);
+  margin-inline: auto;
+  padding-inline: 16px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.skip-link {
+  position: absolute;
+  left: 16px; top: -60px;
+  z-index: 20;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  transition: top 120ms ease;
+}
+.skip-link:focus { top: 12px; }
+
+/* ---------- Header ---------------------------------------------------- */
+
+.site-header {
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.header-inner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 1.25rem;
+}
+
+.site-header h1 {
+  font-size: clamp(1.25rem, 4.5vw, 1.75rem);
+  letter-spacing: -0.01em;
+}
+
+.tagline {
+  margin: 0.3rem 0 0;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  max-width: 48ch;
+}
+
+.theme-toggle {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: var(--plane);
+  color: var(--ink-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+.theme-toggle:hover { color: var(--ink); border-color: var(--axis); }
+
+.theme-toggle-icon {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  background: linear-gradient(to right, currentColor 0 50%, transparent 50% 100%);
+}
+
+/* ---------- Banners --------------------------------------------------- */
+
+.banner {
+  margin-top: 1.25rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  font-size: 0.9375rem;
+}
+.banner h2 { font-size: 0.9375rem; }
+.banner p, .banner ul { margin: 0.4rem 0 0; }
+.banner ul { padding-left: 1.2rem; }
+.banner li { margin-top: 0.15rem; }
+.banner-error { background: var(--error-wash); border-left: 3px solid var(--error-edge); }
+.banner-warn  { background: var(--warn-wash);  border-left: 3px solid var(--warn-edge); }
+
+/* ---------- Stat tiles ------------------------------------------------ */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 0.9rem 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.stat-label {
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+}
+
+.stat-value {
+  font-size: clamp(1.75rem, 7vw, 2.5rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  /* Proportional figures: tabular-nums makes standalone numerals look loose. */
+}
+
+.stat-note {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+/* ---------- Cards ----------------------------------------------------- */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.1rem 1rem 1.25rem;
+  margin-top: 1rem;
+}
+
+.card-head { margin-bottom: 0.9rem; }
+
+.card-head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.card h2 { font-size: 1.0625rem; }
+
+.card-sub {
+  margin: 0.25rem 0 0;
+  color: var(--ink-2);
+  font-size: 0.875rem;
+}
+
+.text-btn {
+  flex: none;
+  background: none;
+  border: 0;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.875rem;
+  padding: 0.25rem 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ---------- Map ------------------------------------------------------- */
+
+.map-frame { position: relative; }
+
+#map {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* At the default view the whole world is visible, so a single finger should
+     scroll the page rather than drag the map. Once zoomed in there is
+     somewhere to pan to, and the map takes the gesture instead. */
+  touch-action: pan-y;
+}
+#map.is-zoomed { touch-action: none; }
+
+.country {
+  fill: var(--q0);
+  /* A hairline in the surface colour is the gap that separates neighbouring
+     fills — no border ink drawn around the marks themselves. */
+  stroke: var(--surface);
+  stroke-width: 0.5;
+  vector-effect: non-scaling-stroke;
+}
+.country.has-books { cursor: pointer; }
+.country.q1 { fill: var(--q1); }
+.country.q2 { fill: var(--q2); }
+.country.q3 { fill: var(--q3); }
+.country.q4 { fill: var(--q4); }
+.country.q5 { fill: var(--q5); }
+
+.country.has-books:hover,
+.country.has-books:focus-visible {
+  stroke: var(--ink);
+  stroke-width: 1.5;
+  outline: none;
+}
+
+.country.is-selected {
+  stroke: var(--ink);
+  stroke-width: 2.5;
+  outline: none;
+}
+
+/* Countries too small to have a polygon at this resolution get a point
+   marker, with a 2px surface ring so it stays legible over a coastline. */
+.dot {
+  cursor: pointer;
+  stroke: var(--surface);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.dot.q1 { fill: var(--q1); }
+.dot.q2 { fill: var(--q2); }
+.dot.q3 { fill: var(--q3); }
+.dot.q4 { fill: var(--q4); }
+.dot.q5 { fill: var(--q5); }
+.dot:hover, .dot:focus-visible { stroke: var(--ink); outline: none; }
+.dot.is-selected { stroke: var(--ink); stroke-width: 3; }
+
+.sphere {
+  fill: none;
+  stroke: var(--axis);
+  stroke-width: 0.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.map-buttons {
+  position: absolute;
+  top: 0; right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.icon-btn {
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0 0.4rem;
+  background: var(--surface);
+  color: var(--ink-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  font: inherit;
+  font-size: 0.8125rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.icon-btn:hover { color: var(--ink); border-color: var(--axis); }
+
+@media (pointer: coarse) {
+  .icon-btn { min-width: 40px; min-height: 40px; }
+}
+
+.map-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-top: 0.75rem;
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  color: var(--ink-2);
+}
+
+.legend-scale {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.legend-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.legend-swatch {
+  width: 26px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.legend-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--rule);
+  margin-inline: 0.25rem;
+}
+
+.legend-pair {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.map-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+/* ---------- Tooltip --------------------------------------------------- */
+
+.tooltip {
+  position: fixed;
+  z-index: 30;
+  pointer-events: none;
+  background: var(--ink);
+  color: var(--surface);
+  padding: 0.35rem 0.55rem;
+  border-radius: var(--radius-s);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  max-width: 15rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+.tooltip b { font-weight: 600; }
+
+/* ---------- Languages ------------------------------------------------- */
+
+.languages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.language-row {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, 9rem) 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-s);
+  padding: 0.35rem 0.4rem;
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.language-row:hover { background: var(--accent-wash); }
+.language-row[aria-pressed="true"] { background: var(--accent-wash); }
+
+.language-name { overflow-wrap: anywhere; }
+
+.language-track { height: 10px; }
+
+.language-bar {
+  height: 10px;
+  min-width: 3px;
+  background: var(--accent);
+  /* 4px rounded data-end, square against the baseline it grows from. */
+  border-radius: 0 4px 4px 0;
+}
+
+.language-count {
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  min-width: 1.5rem;
+  text-align: right;
+}
+
+/* ---------- Filters --------------------------------------------------- */
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem 0.75rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+
+.field label {
+  color: var(--ink-2);
+  font-size: 0.75rem;
+}
+
+.field input,
+.field select {
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--ink);
+  background: var(--plane);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  padding: 0.45rem 0.55rem;
+  min-height: 38px;
+  width: 100%;
+}
+
+.filters .text-btn { padding-bottom: 0.6rem; }
+
+.result-count {
+  margin: 0.8rem 0 0;
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+}
+
+/* ---------- Book table ------------------------------------------------ */
+
+.table-scroll { overflow-x: auto; }
+
+.book-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.book-table th,
+.book-table td {
+  text-align: left;
+  padding: 0.6rem 0.75rem 0.6rem 0;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+
+.book-table thead th {
+  color: var(--ink-2);
+  font-weight: 600;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--axis);
+}
+
+.book-table .num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.book-table tbody tr:hover { background: var(--accent-wash); }
+
+.book-title { font-weight: 600; }
+
+.book-original,
+.book-notes {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  margin-top: 0.15rem;
+}
+
+.country-link {
+  background: none;
+  border: 0;
+  /* Vertical padding keeps the tap target at least 24px tall. */
+  padding: 0.15rem 0;
+  font: inherit;
+  color: var(--accent);
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.code-bad {
+  color: var(--error-edge);
+  font-weight: 600;
+}
+
+.empty-note {
+  margin: 1rem 0 0;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+}
+
+/* ---------- Country panel book cards ---------------------------------- */
+
+.book-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.book-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  padding: 0.65rem 0.8rem;
+  background: var(--plane);
+}
+
+.book-card-title { font-weight: 600; font-size: 0.9375rem; }
+
+.book-card-meta {
+  margin: 0.2rem 0 0;
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+}
+
+/* ---------- Footer ---------------------------------------------------- */
+
+.site-footer {
+  margin-top: 2rem;
+  padding-block: 1.5rem 2.5rem;
+  border-top: 1px solid var(--border);
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+}
+.site-footer p { margin: 0; max-width: 70ch; }
+
+/* ---------- Wider screens -------------------------------------------- */
+
+@media (min-width: 720px) {
+  .card { padding: 1.4rem 1.5rem 1.5rem; }
+  .stats { gap: 1rem; }
+  .stat { padding: 1.1rem 1.25rem 1.25rem; }
+  .languages { grid-template-columns: 1fr 1fr; gap: 2px 1.5rem; }
+  .book-cards { grid-template-columns: 1fr 1fr; }
+  .book-table th,
+  .book-table td { padding-right: 1rem; }
+}
+
+@media (min-width: 1000px) {
+  .languages { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ---------- Narrow screens: the table becomes stacked records --------- */
+
+@media (max-width: 719px) {
+  .book-table thead { display: none; }
+
+  .book-table,
+  .book-table tbody,
+  .book-table tr,
+  .book-table td { display: block; }
+
+  .book-table tr {
+    border-bottom: 1px solid var(--rule);
+    padding: 0.75rem 0 0.85rem;
+  }
+
+  .book-table td {
+    border: 0;
+    padding: 0.1rem 0;
+    display: grid;
+    grid-template-columns: 6.5rem 1fr;
+    gap: 0.75rem;
+  }
+
+  .book-table td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 0.8125rem;
+  }
+
+  /* The first cell carries the title: no label, full width. */
+  .book-table td.cell-title {
+    display: block;
+    margin-bottom: 0.35rem;
+  }
+  .book-table td.cell-title::before { content: none; }
+
+  .book-table td.is-empty { display: none; }
+
+  .book-table tbody tr:hover { background: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}

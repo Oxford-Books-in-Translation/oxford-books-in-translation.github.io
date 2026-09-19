@@ -1,0 +1,11 @@
+{
+  "name": "oxford-books-in-translation",
+  "version": "1.0.0",
+  "private": true,
+  "description": "An interactive map of every book our book group has read in translation.",
+  "type": "module",
+  "scripts": {
+    "validate": "node scripts/validate-books.mjs",
+    "serve": "node scripts/serve.mjs"
+  }
+}

@@ -1,0 +1,23 @@
+name: Validate books.csv
+
+# Checks the data on every push and pull request, so a bad country code or a
+# misspelled language is caught before anyone opens the map.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # No dependencies to install — the validator is plain Node.
+      - name: Validate data/books.csv
+        run: node scripts/validate-books.mjs

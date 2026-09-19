@@ -1,0 +1,11 @@
+# OS and editor clutter
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+.vscode/
+.idea/
+
+# Not used by this project, but harmless insurance if a tool ever adds them
+node_modules/
+npm-debug.log*
