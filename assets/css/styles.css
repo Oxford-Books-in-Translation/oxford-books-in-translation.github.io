@@ -995,7 +995,10 @@ code {
 @media (max-width: 719px) {
   .book-table thead { display: none; }
 
-  .book-table,
+  /* Same trap as .show-all below: a bare `display: block` here outranks the
+     browser's `[hidden] { display: none }`, so a search with no matches drew
+     an empty table above the "no books match" note. */
+  .book-table:not([hidden]),
   .book-table tbody,
   .book-table tr,
   .book-table td { display: block; }
@@ -1044,9 +1047,14 @@ code {
     margin-top: 0.75rem;
   }
 
-  /* Start the list at a recent handful; the button reveals the rest. */
+  /* Start the list at a recent handful; the button reveals the rest.
+     The :not([hidden]) is load-bearing. A bare `.show-all { display: block }`
+     outranks the browser's own `[hidden] { display: none }` — author styles
+     beat the user-agent stylesheet — so the button stayed on screen after a
+     filter cut the list below the cap, wearing a stale label and doing
+     nothing when tapped. */
   .book-table.is-capped tbody tr:nth-child(n + 7) { display: none; }
-  .show-all { display: block; }
+  .show-all:not([hidden]) { display: block; }
 
   .masthead { padding-block: 1.25rem 0; }
   /* Tight enough that the three figures hold one line on a narrow phone. */

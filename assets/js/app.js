@@ -509,16 +509,19 @@ function updateShowAll(visibleCount) {
   const table = $('book-table');
   const cappable = visibleCount > MOBILE_ROW_CAP;
 
+  // A list that no longer needs capping is never left half-expanded.
+  if (!cappable) showingAllBooks = false;
+
   button.hidden = !cappable;
   table.classList.toggle('is-capped', cappable && !showingAllBooks);
 
-  if (!cappable) {
-    showingAllBooks = false;
-    return;
-  }
+  // The label is kept truthful even while the button is hidden. Leaving a
+  // stale "Show all 10 books" on a hidden button meant that the moment
+  // anything caused it to render anyway, it advertised a list length that no
+  // longer existed and did nothing when pressed.
   button.textContent = showingAllBooks
     ? 'Show fewer'
-    : `Show all ${visibleCount} books`;
+    : `Show all ${plural(visibleCount, 'book')}`;
   button.setAttribute('aria-expanded', String(showingAllBooks));
 }
 
