@@ -500,23 +500,36 @@ code {
 .country.q4 { fill: var(--q4); }
 .country.q5 { fill: var(--q5); }
 
-/* Pointing at any country picks it out, read or not. */
-.country:hover,
-.country:focus-visible,
-.country.is-named,
-.country.is-spotlit {
-  stroke: var(--ink);
-  stroke-width: 1.75;
-  outline: none;
+/* The indicator itself lives in .emphasis, above every country, so a
+   neighbour's fill can't paint over half of it. See map.js for why. */
+.country:focus-visible { outline: none; }
+
+.emphasis {
+  pointer-events: none;
 }
+.emphasis path {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+  /* Country outlines are full of tight corners; rounding the joins is what
+     stops a highlight looking like it was drawn with a marker pen. */
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* A paper casing under a fine ink line — the way a printed map lifts a
+   boundary off the sheet. It also means the line stays readable whether the
+   country beside it is bare paper or the darkest green. */
+.emphasis-casing { stroke: var(--surface); }
+.emphasis-line { stroke: var(--ink); }
+
+/* Pointing at a country, or naming it. */
+.emphasis-soft .emphasis-casing { stroke-width: 3; }
+.emphasis-soft .emphasis-line { stroke-width: 1.1; }
 
 /* Selected is a stronger statement than named: it means the list below is
    filtered to this country, which only a country with books can do. */
-.country.is-selected {
-  stroke: var(--ink);
-  stroke-width: 2.5;
-  outline: none;
-}
+.emphasis-strong .emphasis-casing { stroke-width: 4.5; }
+.emphasis-strong .emphasis-line { stroke-width: 1.9; }
 
 /* The name of whatever you last pointed at, pinned over the map. Paper and a
    rule, like a key printed on a chart — not a floating card. */
@@ -1123,9 +1136,11 @@ code {
   #map, .legend-swatch { forced-color-adjust: none; }
 
   .country.has-books { stroke-width: 1.2; }
-  .country.has-books:hover,
-  .country.has-books:focus-visible,
-  .country.is-selected { stroke: Highlight; stroke-width: 3; }
+  /* #map opts out of forced colours to keep the ramp, so the emphasis has to
+     ask for the system highlight explicitly rather than inheriting it. */
+  .emphasis-line { stroke: Highlight; }
+  .emphasis-casing { stroke: Canvas; }
+  .dot.is-selected, .dot.is-named { stroke: Highlight; }
 
   .banner, .field input, .field select, .icon-btn, .theme-toggle {
     border: 1px solid CanvasText;

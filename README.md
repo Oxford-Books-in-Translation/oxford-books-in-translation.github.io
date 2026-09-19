@@ -153,6 +153,20 @@ to every country.
 Clicking an unread country therefore names it and leaves your filter alone.
 Clicking open sea clears the label.
 
+**Both are drawn in a layer above every country, not by thickening the
+country's own outline.** An SVG stroke straddles its path, half inside the
+shape and half outside, so a country drawn low in the stack loses the outer
+half of its outline wherever a neighbour drawn later sits against it. The same
+line then came out full width along a coastline and half width on every inland
+border — uneven, and not fixable by picking a better width. Drawn on top,
+nothing can paint over it.
+
+The indicator is a fine ink line over a paper casing, the way a printed map
+lifts a boundary off the sheet, with rounded joins so the tight corners of a
+border don't read as jagged. **The fill is deliberately left alone:** on this
+map a darker shade means more books, so darkening the country under the pointer
+would make it look like a country we'd read more of.
+
 ## How the map handles awkward cases
 
 - **Several nationalities.** `FRA|DZA` counts the book for both countries, and

@@ -153,6 +153,57 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
     .attr('role', 'button')
     .attr('aria-label', (d) => `${d.entry.name}, ${countText(d.entry.count)}`);
 
+  /* ---- emphasis ----
+     Picking out a country is drawn here, in its own layer above every shape,
+     rather than by thickening that shape's own stroke.
+
+     An SVG stroke straddles its path, half inside and half out. A country
+     drawn low in the stack therefore loses the outer half of its outline
+     wherever a neighbour drawn later sits against it — so the same 1.75px
+     line came out full width along Sudan's Red Sea coast and half width on
+     every inland border. Uneven, and not fixable by choosing a better width.
+
+     Up here nothing paints over it, so the line is one weight the whole way
+     round. It is drawn as a fine ink line over a paper casing, the way a
+     printed map lifts a boundary off the sheet, which also keeps it legible
+     against both a dark green fill and bare paper.
+
+     The fill is deliberately left alone: on this map a darker shade means
+     more books, so darkening the country you are pointing at would say
+     something false about it. */
+  const emphasis = root.append('g').attr('class', 'emphasis').attr('aria-hidden', 'true');
+  const softLayer = emphasis.append('g').attr('class', 'emphasis-soft');
+  const strongLayer = emphasis.append('g').attr('class', 'emphasis-strong');
+  for (const layer of [softLayer, strongLayer]) {
+    layer.append('path').attr('class', 'emphasis-casing');
+    layer.append('path').attr('class', 'emphasis-line');
+  }
+
+  // The rendered shape already holds the geometry, so emphasis reuses its `d`
+  // rather than re-projecting the country every time the pointer moves.
+  const shapeByCode = new Map();
+  shapes.each(function (f) {
+    if (f.code) shapeByCode.set(f.code, this);
+  });
+
+  function paint(layer, code) {
+    const node = code ? shapeByCode.get(code) : null;
+    const d = node ? node.getAttribute('d') : null;
+    layer.selectAll('path').attr('d', d);
+    layer.attr('display', d ? null : 'none');
+  }
+
+  // What is picked out softly: whatever the pointer is on, or failing that
+  // the country whose name is pinned to the map.
+  let namedCode = null;
+  let transientCode = null;
+  const paintSoft = () => paint(softLayer, transientCode || namedCode);
+
+  // Start both layers empty and explicitly hidden, rather than relying on a
+  // path with no `d` happening to draw nothing.
+  paint(softLayer, null);
+  paint(strongLayer, null);
+
   /* ---- interaction ---- */
 
   const entryOf = (d) => (d.entry ? d.entry : d.code ? byCountry.get(d.code) : null);
@@ -168,8 +219,9 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
 
   function clearName() {
     labelEl.hidden = true;
-    shapes.classed('is-named', false);
+    namedCode = null;
     dots.classed('is-named', false);
+    paintSoft();
   }
 
   function nameCountry(node, d) {
@@ -178,9 +230,10 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
       ? `${entry.name} · ${countText(entry.count)}`
       : `${nameOf(d)} · not read yet`;
 
-    shapes.classed('is-named', false);
-    dots.classed('is-named', false);
-    node.classList.add('is-named');
+    // A dot has no outline to trace, so it keeps a class of its own.
+    namedCode = d.code || (entry && entry.code) || null;
+    dots.classed('is-named', (dot) => dot.entry.code === namedCode);
+    paintSoft();
 
     labelEl.textContent = text;
     labelEl.hidden = false;
@@ -224,13 +277,24 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
   // correctly for whichever one is being used.
   const hovering = (event) => event.pointerType !== 'touch';
 
+  /** Pick out whatever the pointer or keyboard is currently on. */
+  function touch(d) {
+    transientCode = (d && (d.code || (d.entry && d.entry.code))) || null;
+    dots.classed('is-spotlit', (dot) => dot.entry.code === transientCode);
+    paintSoft();
+  }
+  const untouch = () => touch(null);
+
   function bindHandlers(selection) {
     selection
-      .on('pointerenter', (event, d) => { if (hovering(event)) tooltip.show(describe(d), event); })
+      .on('pointerenter', (event, d) => {
+        touch(d);
+        if (hovering(event)) tooltip.show(describe(d), event);
+      })
       .on('pointermove', (event) => { if (hovering(event)) tooltip.move(event); })
-      .on('pointerleave', () => tooltip.hide())
-      .on('focus', (event, d) => tooltip.showAt(describe(d), event.currentTarget))
-      .on('blur', () => tooltip.hide())
+      .on('pointerleave', () => { untouch(); tooltip.hide(); })
+      .on('focus', (event, d) => { touch(d); tooltip.showAt(describe(d), event.currentTarget); })
+      .on('blur', () => { untouch(); tooltip.hide(); })
       .on('click', (event, d) => activate(event.currentTarget, d))
       .on('keydown', (event, d) => {
         if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -357,13 +421,12 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
   return {
     /** Outline the selected country (or clear it when code is null). */
     highlight(code) {
-      shapes.classed('is-selected', (f) => Boolean(code) && f.code === code);
+      paint(strongLayer, code || null);
       dots.classed('is-selected', (d) => d.entry.code === code);
     },
     /** Momentarily pick out a country — used when pointing at it in the list. */
     spotlight(code) {
-      shapes.classed('is-spotlit', (f) => Boolean(code) && f.code === code);
-      dots.classed('is-spotlit', (d) => Boolean(code) && d.entry.code === code);
+      touch(code ? { code } : null);
     },
     zoomIn() { ease(svg).call(zoom.scaleBy, 1.6); },
     zoomOut() { ease(svg).call(zoom.scaleBy, 1 / 1.6); },
