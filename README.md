@@ -216,13 +216,25 @@ since the vendored fonts carry only the latin range.
 
 ### On a phone
 
-A small phone is the hardest case, so three things change below 720px.
+A small phone is the hardest case, and the map is the hard part of it. At 320px
+the whole world is 280px across, which makes Hungary 4.5×2.6px and South Korea
+3px — against a finger pad of forty-odd. Measured over a grid of 861 taps, only
+**3% of the map was a direct hit on a country we've read.** So:
 
+- **A tap near a country selects it.** The handler samples rings of points
+  outward from the tap, nearest first, and takes the closest country within
+  32px. That raises the share of taps that land from 3% to 39%, and the rest is
+  ocean and continents we haven't read, where doing nothing is the right
+  answer. It agrees with an exhaustive 1px search 95.5% of the time; the
+  disagreements are all between true neighbours, like Spain and France.
+  Bounding boxes reject hopeless taps before any probing, which keeps the
+  common case free and the worst case under 20ms.
 - **A country's books appear directly under the map**, not further down the
-  page. Tapping a country on a phone used to scroll you somewhere else, which
-  read as the page jumping rather than as a filter being applied. The panel is
-  in the same place on every screen size; only the need for it is sharper on a
-  phone.
+  page, and the page only scrolls if that panel would otherwise be off screen.
+  When it does scroll it aligns the *map*, not the panel — aligning the panel
+  would push the map off the top, which is the disorienting jump this layout
+  exists to avoid. A tap that opens a panel below the fold is
+  indistinguishable from a tap that did nothing, which is what this fixes.
 - **The zoom controls sit under the map** rather than floating over its
   right-hand edge, where at phone height they covered Japan and Korea.
 - **The book list starts at the six most recent** with a button for the rest.
@@ -254,6 +266,13 @@ are checked by `scripts/check-contrast.mjs` on every push.
 - **Screen readers.** Each country has a spoken label with its count, original
   titles are tagged with their own language so pronunciation switches, and
   right-to-left titles are marked as such.
+- **Target size.** A country's shape is a few pixels wide on a phone, far under
+  the 24px of SC 2.5.8. Two exceptions apply and both are deliberately made
+  true rather than assumed: the shapes are *essential* (a map whose countries
+  are all 24px is not a map), and the **country index below the map is an
+  equivalent control** — every country with books is in it, at full row height.
+  The forgiving-tap search above is not a substitute for that; it is there so
+  the map isn't merely decorative.
 - **Reflow and zoom.** No horizontal scrolling at 320px, and the WCAG
   text-spacing overrides clip nothing.
 - **Reduced motion, high contrast and Windows forced-colors** are all

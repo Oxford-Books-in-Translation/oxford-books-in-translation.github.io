@@ -35,6 +35,18 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+/**
+ * Smooth scrolling is driven by requestAnimationFrame, which a hidden tab
+ * never fires — so the page would simply not move. Jump straight there
+ * instead, the same fallback the map's zoom transitions use.
+ */
+function scrollPageTo(element, block = 'start') {
+  element.scrollIntoView({
+    behavior: reducedMotion() || document.hidden ? 'auto' : 'smooth',
+    block,
+  });
+}
+
 /* ------------------------------------------------------------------ theme */
 
 const THEME_KEY = 'obit-theme';
@@ -273,7 +285,7 @@ function renderTranslators() {
 
     button.addEventListener('click', () => {
       setState({ search: state.search === entry.name ? '' : entry.name });
-      $('books').scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' });
+      scrollPageTo($('books'));
     });
 
     list.append(el('li', {}, [button]));
@@ -303,7 +315,7 @@ function renderLanguages() {
     ]);
     button.addEventListener('click', () => {
       setState({ language: state.language === entry.name ? '' : entry.name });
-      $('books').scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' });
+      scrollPageTo($('books'));
     });
     list.append(el('li', {}, [button]));
   }
@@ -551,11 +563,32 @@ function setState(patch) {
 
 }
 
+/**
+ * Put the map and the answer on screen together, but only when they aren't
+ * already. The panel sits under the map, and on a phone the map plus its
+ * legend is most of a screen — so a tap made near the top of the page can
+ * open a panel that is entirely below the fold, which looks exactly like
+ * nothing happening.
+ *
+ * Aligning the map rather than the panel is deliberate: scrolling the panel
+ * itself into view would push the map off the top, which is the disorienting
+ * jump this layout exists to avoid. Landing on the map keeps "I tapped there,
+ * the answer appeared underneath" intact.
+ */
+function revealCountryPanel() {
+  const panel = $('country-panel');
+  if (panel.hidden) return;
+
+  const box = panel.getBoundingClientRect();
+  if (box.top >= 0 && box.bottom <= window.innerHeight) return;
+
+  scrollPageTo(document.querySelector('.map-figure'));
+}
+
 function selectCountry(code) {
   // Tapping the selected country again clears it, which is what a map invites.
-  // No scrolling: the country's books now appear directly beneath the map, so
-  // moving the page would only take the answer away from where you're looking.
   setState({ country: state.country === code ? '' : code });
+  revealCountryPanel();
 }
 
 /* --------------------------------------------------- shareable URL state */
@@ -640,7 +673,7 @@ function buildFilters() {
     // Collapsing from far down the list would otherwise strand you in the
     // footer, so return to the top of the list.
     if (!wasExpanded) {
-      $('books').scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' });
+      scrollPageTo($('books'));
     }
   });
   $('country-clear').addEventListener('click', () => setState({ country: '' }));
