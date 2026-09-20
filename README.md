@@ -274,19 +274,18 @@ the whole world is 280px across, which makes Hungary 4.5×2.6px and South Korea
   push New Zealand off the edge, and 260px would lose Australia's east coast
   and Canada's west. Full-bleed is the one honest gain, taking it from 335×147
   to 375×164.
-- **Zooming in makes the map a proper window.** Once you are zoomed you are
-  looking at a region, not the world, so the frame stops having to keep the
-  world's proportions and grows to 58vh — about 380px, more than twice its
-  resting height. `preserveAspectRatio` switches to `slice` so the map fills
-  that taller box instead of sitting letterboxed in it, and switches back on
-  reset.
-- **`+` zooms toward the country you last touched**, not the middle of the
-  Sahara. This is the part that makes a three-pixel country usable: tap
-  anywhere near Hungary and press `+` three times and it goes from 6×3px to
-  about 57×33px, comfortably past the 24px target-size threshold, without ever
-  leaving the screen. Zooming about the centre would just push it off the edge.
-- **The zoom controls sit under the map** rather than floating over its
-  right-hand edge, where at phone height they covered Japan and Korea.
+- **There is no zoom on a phone at all** — no buttons, no pinch, no drag. This
+  was tried and removed. Panning a zoomed map wants the same one-finger drag
+  as scrolling the page, and whichever way that conflict is resolved someone
+  loses; in practice the map swallowed the scroll and the page felt broken. A
+  375px-wide world map cannot be zoomed into usefully anyway. **The map is a
+  picture you can tap; the country list underneath is how you pick one
+  precisely.** Resisting that split is what produced every mobile problem this
+  file documents.
+- **A vertical drag on the map is always a page scroll**, everywhere, at every
+  size. `touch-action` stays `pan-y` and the map never claims a single-finger
+  gesture, so it cannot trap the page. Above 720px the buttons and two-finger
+  pinch are available; two fingers, not one, so the gesture is never ambiguous.
 - **The book list starts at the six most recent** with a button for the rest.
   The full list is already a long scroll on a phone and only gets longer.
   Changing a filter collapses it again, and collapsing returns you to the top

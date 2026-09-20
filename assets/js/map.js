@@ -385,19 +385,28 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
   });
 
   /* ---- zoom ----
-     One finger scrolls the page and two fingers pan the map, so the map never
-     traps a phone scroll; the wheel zooms only with a modifier held, for the
-     same reason. The buttons work everywhere. */
+     Not on a phone. Panning a zoomed map wants the same one-finger drag as
+     scrolling the page, and whichever way that conflict is resolved someone
+     loses — in practice the map swallowed the scroll and the page felt broken.
+     A 375px-wide world map can't be zoomed into usefully anyway; the list of
+     countries under it is the honest way to pick one. So below 720px there is
+     no zoom at all: no buttons, no pinch, no drag. The map is a picture you
+     can tap.
+
+     Above that, the wheel zooms only with a modifier held so the page still
+     scrolls, and the buttons work. */
+  const phone = window.matchMedia('(max-width: 719px)');
   let scale = 1;
 
   const zoom = d3
     .zoom()
     .scaleExtent([1, 12])
     .filter((event) => {
+      if (phone.matches) return false;
       if (event.type === 'wheel') return event.ctrlKey || event.metaKey;
-      // At the default view a single finger belongs to the page, not the map;
-      // once zoomed in there is somewhere to pan to, so the map takes it.
-      if (event.type === 'touchstart') return event.touches.length > 1 || scale > 1;
+      // Always two fingers, zoomed or not. One finger is the page's, and
+      // sharing it with the map meant a drag scrolled and panned at once.
+      if (event.type === 'touchstart') return event.touches.length > 1;
       return !event.button;
     })
     .on('zoom', (event) => {
@@ -405,15 +414,19 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
       root.attr('transform', event.transform);
       dots.attr('r', 5 / scale);
       svgEl.classList.toggle('is-zoomed', scale > 1);
-      // On a phone the zoomed frame is taller than the world's proportions,
-      // so the map has to fill it rather than sit letterboxed inside it.
-      svgEl.setAttribute('preserveAspectRatio', scale > 1 ? 'xMidYMid slice' : 'xMidYMid meet');
       // The label is placed in screen coordinates, so panning would leave it
       // pointing at open sea. Take it away rather than let it lie.
       clearName();
     });
 
   svg.call(zoom).on('dblclick.zoom', null);
+
+  // Turning a tablet to portrait can cross into phone width while zoomed in,
+  // which would strand the map with no controls left to get back. Put it
+  // back to the whole world instead.
+  phone.addEventListener('change', (event) => {
+    if (event.matches && scale !== 1) svg.call(zoom.transform, d3.zoomIdentity);
+  });
 
   // A transition is driven by requestAnimationFrame, which a hidden tab never
   // fires — so fall back to jumping straight there rather than doing nothing.

@@ -468,12 +468,11 @@ code {
   display: block;
   width: 100%;
   height: auto;
-  /* At the default view the whole world is visible, so a single finger should
-     scroll the page rather than drag the map. Once zoomed in there is
-     somewhere to pan to, and the map takes the gesture instead. */
+  /* A vertical drag on the map is always a page scroll, never a map pan. The
+     map must never be able to trap the page — that was the single worst thing
+     it ever did on a phone. */
   touch-action: pan-y;
 }
-#map.is-zoomed { touch-action: none; }
 
 .country {
   fill: var(--q0);
@@ -1084,9 +1083,16 @@ code {
   .map-figure {
     margin-inline: -20px;
   }
-  .map-figure .map-foot,
-  .map-figure .map-buttons {
+  .map-figure .map-foot {
     padding-inline: 20px;
+  }
+
+  /* No zoom on a phone. It was the wrong answer to small countries: panning a
+     zoomed map needs the same one-finger drag as scrolling the page, so the
+     map swallowed the scroll and the page felt stuck. The map is the glance;
+     the list of countries underneath is how you pick one precisely. */
+  .map-buttons {
+    display: none;
   }
 
   /* Shorten the run-up so the map starts higher up the screen and more of it
@@ -1099,24 +1105,6 @@ code {
     font-size: 0.9375rem;
   }
 
-  /* The map is only ~160px tall on a phone, and a stack of controls floating
-     over its right-hand edge was covering Japan and Korea. Put them underneath
-     instead: they leave the flow as soon as position goes static. */
-  .map-buttons {
-    position: static;
-    flex-direction: row;
-    justify-content: flex-end;
-    gap: 8px;
-    margin-top: 0.75rem;
-  }
-
-  /* Zoomed in you are looking at a region, not the world, so the frame stops
-     having to keep the world's proportions and becomes a proper window.
-     `slice` fills the taller box by cropping width, which is exactly what you
-     want once you are already zoomed and can pan. */
-  #map.is-zoomed {
-    height: min(58vh, 380px);
-  }
 
   /* Start the list at a recent handful; the button reveals the rest.
      The :not([hidden]) is load-bearing. A bare `.show-all { display: block }`
