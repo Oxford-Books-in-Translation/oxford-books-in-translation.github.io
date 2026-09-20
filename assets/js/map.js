@@ -59,6 +59,32 @@ export function binClass(count) {
 const prefersReducedMotion = () =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+/**
+ * Framings the map can jump to, as [west, south, east, north] in degrees.
+ *
+ * A button is the answer to the phone problem that gestures weren't: pinch and
+ * drag have to be taken away from the page's own scrolling, and something
+ * always loses that fight. Pressing a region doesn't compete with anything,
+ * works by keyboard, and lands on a frame someone chose rather than wherever
+ * a finger happened to stop.
+ *
+ * The bounds are deliberately hand-picked rather than derived from the
+ * countries in each region: a computed box would be dragged out to the
+ * horizon by Alaska, by Russia crossing the date line, or by one far-flung
+ * island, and would shift under us every time a book is added.
+ */
+export const REGION_VIEWS = [
+  { key: 'world', label: 'Whole world' },
+  // Stops at 67°N: the Arctic tips of Norway, Sweden and Finland cost more
+  // magnification across the whole of Europe than they are worth, and Iceland
+  // still sits inside it.
+  { key: 'Europe', label: 'Europe', bounds: [-25, 35, 45, 67] },
+  { key: 'Africa', label: 'Africa', bounds: [-19, -36, 52, 38] },
+  { key: 'Asia', label: 'Asia', bounds: [26, -11, 147, 56] },
+  { key: 'Americas', label: 'Americas', bounds: [-168, -56, -34, 72] },
+  { key: 'Oceania', label: 'Oceania', bounds: [110, -48, 180, 0] },
+];
+
 export function createMap({ svgEl, topology, countries, byCountry, onSelect, tooltip }) {
   const d3 = window.d3;
   const svg = d3.select(svgEl);
@@ -464,6 +490,46 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
     },
     zoomOut() { ease(svg).call(zoom.scaleBy, 1 / 1.6); },
     reset() { ease(svg).call(zoom.transform, d3.zoomIdentity); },
+
+    /**
+     * Frame a region named in REGION_VIEWS, or the whole world.
+     *
+     * Natural Earth curves its meridians, so a box of degrees is not a box on
+     * screen — the top edge of a northern region bows upward well above its
+     * corners. Sampling along all four edges and taking the extent of the
+     * projected points is what stops Scandinavia being sliced off the top of
+     * "Europe".
+     */
+    showRegion(key) {
+      const view = REGION_VIEWS.find((r) => r.key === key);
+      if (!view || !view.bounds) {
+        ease(svg).call(zoom.transform, d3.zoomIdentity);
+        return;
+      }
+
+      const [w, s, e, n] = view.bounds;
+      const steps = 24;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const lon = w + (e - w) * t;
+        const lat = s + (n - s) * t;
+        for (const point of [[lon, s], [lon, n], [w, lat], [e, lat]]) {
+          const projected = projection(point);
+          if (!projected) continue;
+          x0 = Math.min(x0, projected[0]); x1 = Math.max(x1, projected[0]);
+          y0 = Math.min(y0, projected[1]); y1 = Math.max(y1, projected[1]);
+        }
+      }
+      if (!Number.isFinite(x0) || x1 <= x0 || y1 <= y0) return;
+
+      const [min, max] = zoom.scaleExtent();
+      const k = Math.max(min, Math.min(max, 0.94 * Math.min(width / (x1 - x0), height / (y1 - y0))));
+      const transform = d3.zoomIdentity
+        .translate(width / 2 - (k * (x0 + x1)) / 2, height / 2 - (k * (y0 + y1)) / 2)
+        .scale(k);
+      ease(svg).call(zoom.transform, transform);
+    },
     /** Codes we have books for but could only draw as a point. */
     pointOnlyCodes: points.map((p) => p.entry.code),
   };

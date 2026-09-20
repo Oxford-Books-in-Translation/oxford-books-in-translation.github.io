@@ -8,7 +8,7 @@
  */
 
 import { loadData, countryNames, formatDate, languageTag, isRightToLeft } from './data.js';
-import { createMap, binClass, BIN_LABELS } from './map.js';
+import { createMap, binClass, BIN_LABELS, REGION_VIEWS } from './map.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -149,6 +149,50 @@ function renderStats() {
 }
 
 /* ----------------------------------------------------------------- legend */
+
+/* ---------------------------------------------------------- map regions */
+
+/**
+ * Buttons that frame a continent. This is how you get close enough to read
+ * individual countries on a phone, where the whole world is 375px wide and
+ * gestures are not available — and it changes only what the map shows, never
+ * which books are listed. Region is a place to look, not a filter; mixing it
+ * into the filters below would make "Europe" mean two different things on one
+ * page.
+ */
+let mapRegion = 'world';
+
+function renderRegions() {
+  const group = $('map-regions');
+  group.replaceChildren();
+
+  for (const view of REGION_VIEWS) {
+    const button = el('button', {
+      type: 'button',
+      class: 'region-btn',
+      'data-region': view.key,
+      'aria-pressed': String(mapRegion === view.key),
+      text: view.label,
+    });
+
+    button.addEventListener('click', () => {
+      // Pressing the region you are already in returns to the whole world,
+      // so the control can always undo itself without hunting for "Whole
+      // world" at the far end of the row.
+      mapRegion = mapRegion === view.key ? 'world' : view.key;
+      map.showRegion(mapRegion);
+      syncRegionButtons();
+    });
+
+    group.append(button);
+  }
+}
+
+function syncRegionButtons() {
+  for (const button of document.querySelectorAll('.region-btn')) {
+    button.setAttribute('aria-pressed', String(button.dataset.region === mapRegion));
+  }
+}
 
 function renderLegend() {
   const legend = $('legend');
@@ -688,7 +732,7 @@ function setMapHint() {
   // would have to already know it to find out. On a phone the shapes are too
   // small to hit reliably, so the list stays in the sentence.
   $('map-hint').textContent = coarse
-    ? 'Tap any country to name it; shaded ones open their books. Or pick one from the list below.'
+    ? 'Choose a region to see it close up. Tap any country to name it; shaded ones open their books.'
     : 'Hover or click any country to name it; shaded ones open their books. Ctrl + scroll to zoom, drag to pan.';
 }
 
@@ -713,6 +757,7 @@ async function init() {
   });
 
   renderStats();
+  renderRegions();
   renderLegend();
   renderCountryIndex();
   renderCoverageNote();
@@ -725,7 +770,12 @@ async function init() {
 
   $('zoom-in').addEventListener('click', () => map.zoomIn());
   $('zoom-out').addEventListener('click', () => map.zoomOut());
-  $('zoom-reset').addEventListener('click', () => map.reset());
+  $('zoom-reset').addEventListener('click', () => {
+    map.reset();
+    // Otherwise a region would stay lit while the map showed the whole world.
+    mapRegion = 'world';
+    syncRegionButtons();
+  });
 
   // Following a shared link while the page is already open changes only the
   // hash, which the browser treats as same-document — so apply it by hand.

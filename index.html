@@ -132,6 +132,13 @@
           </div>
         </div>
 
+        <!-- Jumping to a region is a button, not a gesture. Pinch and drag
+             have to be taken off the page's own scrolling and something always
+             loses that fight; pressing a region competes with nothing, works
+             by keyboard, and lands on a framing someone chose. -->
+        <div class="map-regions" id="map-regions" role="group"
+             aria-label="Zoom the map to a region"></div>
+
         <figcaption class="map-foot">
           <div id="legend" class="legend"></div>
           <p class="map-hint" id="map-hint"></p>

@@ -274,12 +274,33 @@ the whole world is 280px across, which makes Hungary 4.5×2.6px and South Korea
   push New Zealand off the edge, and 260px would lose Australia's east coast
   and Canada's west. Full-bleed is the one honest gain, taking it from 335×147
   to 375×164.
-- **There is no zoom on a phone at all** — no buttons, no pinch, no drag. This
-  was tried and removed. Panning a zoomed map wants the same one-finger drag
-  as scrolling the page, and whichever way that conflict is resolved someone
-  loses; in practice the map swallowed the scroll and the page felt broken. A
-  375px-wide world map cannot be zoomed into usefully anyway. **The map is a
-  picture you can tap; the country list underneath is how you pick one
+- **Region buttons, not gestures.** Whole world, Europe, Africa, Asia,
+  Americas, Oceania. Pressing one frames that continent; pressing it again
+  goes back to the world. This is how you get close enough to read individual
+  countries on a phone, and it is the whole reason there are no gestures:
+  pinch and drag have to be taken off the page's own scrolling, and something
+  always loses that fight. A button competes with nothing, works by keyboard,
+  and lands on a framing someone chose rather than wherever a finger stopped.
+
+  In the Europe view at 375px, Hungary goes from **6×3.4px to 25×14px** and
+  Austria from 7×3.1 to 29×13 — the difference between guessing and reading.
+
+  The bounds are hand-picked degrees rather than computed from each region's
+  countries: a computed box gets dragged to the horizon by Alaska, by Russia
+  crossing the date line, or by one far-flung island, and would shift every
+  time a book is added. Europe stops at 67°N because the Arctic tips of
+  Norway, Sweden and Finland cost more magnification across the whole
+  continent than they are worth; Iceland still fits. Natural Earth curves its
+  meridians, so `showRegion` samples along all four edges of the box and takes
+  the extent of the projected points — a plain corner-to-corner rectangle
+  slices the top off northern regions.
+
+  **A region changes only what the map shows, never which books are listed.**
+  Region is a place to look, not a filter; making "Europe" mean two different
+  things on one page would be worse than not having it.
+- **There is no pinch or drag on a phone.** Tried, and removed. The map
+  swallowed the scroll and the page felt broken. **The map is a picture you can
+  tap; regions get you closer; the country list underneath is how you pick one
   precisely.** Resisting that split is what produced every mobile problem this
   file documents.
 - **A vertical drag on the map is always a page scroll**, everywhere, at every
