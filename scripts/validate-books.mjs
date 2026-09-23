@@ -18,6 +18,7 @@ import { dirname, join, resolve } from 'node:path';
 
 import { parseCsv } from '../assets/js/csv.js';
 import { validateBooks, validateColumns } from '../assets/js/validate.js';
+import { localIsoDate } from '../assets/js/data.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -60,13 +61,20 @@ for (const warning of allWarnings) console.error(`${colour.yellow('warn')}   ${w
 
 /* ---- summary ---- */
 
-const countryCodes = new Set(books.flatMap((book) => book.nationalities));
-const languages = new Set(books.map((book) => book.language).filter(Boolean));
+// Counted the way the site counts: a book dated after today is coming up, not
+// read, and doesn't add a country or a language yet.
+const today = localIsoDate(new Date());
+const booksRead = books.filter((book) => !(book.dateDiscussed && book.dateDiscussed > today));
+const upcoming = books.length - booksRead.length;
+
+const countryCodes = new Set(booksRead.flatMap((book) => book.nationalities));
+const languages = new Set(booksRead.map((book) => book.language).filter(Boolean));
 
 const summary = [
-  `${books.length} books`,
+  `${booksRead.length} books read`,
   `${countryCodes.size} countries`,
   `${languages.size} languages`,
+  ...(upcoming ? [`${upcoming} coming up`] : []),
 ].join(' · ');
 
 if (errors.length || allWarnings.length) console.error('');

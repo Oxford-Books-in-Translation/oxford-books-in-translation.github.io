@@ -411,13 +411,13 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
   });
 
   /* ---- zoom ----
-     Not on a phone. Panning a zoomed map wants the same one-finger drag as
-     scrolling the page, and whichever way that conflict is resolved someone
-     loses — in practice the map swallowed the scroll and the page felt broken.
-     A 375px-wide world map can't be zoomed into usefully anyway; the list of
-     countries under it is the honest way to pick one. So below 720px there is
-     no zoom at all: no buttons, no pinch, no drag. The map is a picture you
-     can tap.
+     Not on a phone, where the map is a picture and takes no input at all (see
+     `#map` in the phone section of styles.css). Every attempt to make a
+     375px-wide world map into a control failed: countries too small to hit,
+     gestures that fought the page's own scrolling, zoom that confused more
+     than it helped. The list of countries under it does the job properly, and
+     the map reflects what you pick there. The filter below is a second lock,
+     in case pointer events ever reach it.
 
      Above that, the wheel zooms only with a modifier held so the page still
      scrolls, and the buttons work. */
@@ -462,11 +462,32 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
       : selection.transition().duration(250);
 
   return {
-    /** Outline the selected country (or clear it when code is null). */
+    /**
+     * Outline the selected country (or clear it when code is null), and pin
+     * its name to the map.
+     *
+     * The label matters most on a phone, where the map can't be tapped and a
+     * country is chosen from the list below instead: outlining a six-pixel
+     * Hungary and saying nothing would leave you hunting for what changed.
+     * Named here, the map answers wherever the choice was made.
+     */
     highlight(code) {
+      const previous = selectedCode;
       selectedCode = code || null;
       paint(strongLayer, selectedCode);
       dots.classed('is-selected', (d) => d.entry.code === code);
+
+      // Called on every filter change, so act only when the country itself
+      // changed — otherwise typing in the search box would keep dragging the
+      // label back from whatever you had pointed at on the map.
+      if (selectedCode === previous) return;
+      if (selectedCode) {
+        const node = shapeByCode.get(selectedCode)
+          || dots.filter((d) => d.entry.code === selectedCode).node();
+        if (node) nameCountry(node, d3.select(node).datum());
+      } else if (namedCode === previous) {
+        clearName();
+      }
     },
     /** Momentarily pick out a country — used when pointing at it in the list. */
     spotlight(code) {

@@ -15,6 +15,14 @@ site sorts by `date_discussed`.
 2. Commit and push.
 3. GitHub Pages redeploys and the map updates.
 
+**Books you haven't read yet can go in now.** Give them the date of the book
+night they're planned for. Anything dated after today appears under **Coming
+up** at the top of the book list and is counted nowhere else — not on the map,
+not in the figures, not in the languages or translators — so the page never
+claims a book was read before it was. On the day itself it moves onto the map
+and into the list on its own; nothing needs editing. If a date changes, just
+change the row.
+
 You can do all three from GitHub's web editor in a browser, from GitHub
 Desktop, or from a text editor. If you edit the file in Excel, save it as
 **CSV UTF-8** — otherwise accented characters and non-Latin titles get mangled.
@@ -247,71 +255,65 @@ since the vendored fonts carry only the latin range.
 
 ### On a phone
 
-A small phone is the hardest case, and the map is the hard part of it. At 320px
-the whole world is 280px across, which makes Hungary 4.5×2.6px and South Korea
-3px — against a finger pad of forty-odd. Measured over a grid of 861 taps, only
-**3% of the map was a direct hit on a country we've read.** So:
+**Below 720px the map is a picture, not a control.** It takes no input at all
+(`pointer-events: none`), so a touch on it is a touch on the page and scrolls
+like any other part of it. You pick a country from the **Countries read** list
+directly underneath, and the map outlines and names it, with its books
+between the two.
 
-- **Every tap on land is answered**, because every country names itself. A tap
-  that lands on the neighbour of the one you meant says so, which is honest and
-  still tells you the map is working.
-- **A tap in the sea reaches for a country we've read**, up to 32px, so the
-  coast of a small read country is forgiving rather than dead. The handler
-  samples rings of points outward from the tap, nearest first. It agrees with
-  an exhaustive 1px search 95.5% of the time; the disagreements are all between
-  true neighbours, like Spain and France. Bounding boxes reject hopeless taps
-  before any probing, which keeps the common case free and the worst case under
-  20ms. A tap with nothing in range clears the label.
-- **A country's books appear directly under the map**, not further down the
-  page, and the page only scrolls if that panel would otherwise be off screen.
-  When it does scroll it aligns the *map*, not the panel — aligning the panel
-  would push the map off the top, which is the disorienting jump this layout
-  exists to avoid. A tap that opens a panel below the fold is
-  indistinguishable from a tap that did nothing, which is what this fixes.
+That is the conclusion of trying hard to make it a control. At 320px the whole
+world is 280px across: Hungary is 4.5×2.6px and South Korea 3px, against a
+finger pad of forty-odd, and only 3% of the map was a direct hit on a country
+we've read. Everything tried to get round that made the page worse:
+
+- **Forgiving taps** (reaching up to 32px for the nearest read country) helped
+  the hit rate but meant a tap could select something you didn't aim at.
+- **Pinch and drag** have to be taken off the page's own scrolling, and
+  something always loses that fight. In practice the map swallowed the scroll
+  and the page felt stuck.
+- **A frame that grew when zoomed** jumped the layout around under your thumb.
+- **Region buttons** worked, but six buttons to operate a picture was more
+  machinery than the map was worth at that size.
+
+The list does the job properly. So on a phone:
+
 - **The map runs edge to edge.** A world map is 960:420, so its height is
   decided entirely by its width — there is no way to make it taller without
   cropping, and cropping costs real geography: a 190px-tall frame would already
   push New Zealand off the edge, and 260px would lose Australia's east coast
   and Canada's west. Full-bleed is the one honest gain, taking it from 335×147
   to 375×164.
-- **Region buttons, not gestures.** Whole world, Europe, Africa, Asia,
-  Americas, Oceania. Pressing one frames that continent; pressing it again
-  goes back to the world. This is how you get close enough to read individual
-  countries on a phone, and it is the whole reason there are no gestures:
-  pinch and drag have to be taken off the page's own scrolling, and something
-  always loses that fight. A button competes with nothing, works by keyboard,
-  and lands on a framing someone chose rather than wherever a finger stopped.
+- **Picking a country brings the map into view.** The list sits below the map,
+  so when you pick from it the page scrolls to put the map at the top of the
+  screen, the country outlined and named on it, and its books directly
+  beneath. It scrolls only when the map or the books would otherwise be off
+  screen, and it aligns the *map*, not the panel — aligning the panel would
+  push the map off the top, which is the disorienting jump this layout exists
+  to avoid. The same happens from a country link in the book table. The
+  country dropdown in the filters deliberately doesn't move you: you are
+  working the list there, not looking at the map.
 
-  In the Europe view at 375px, Hungary goes from **6×3.4px to 25×14px** and
-  Austria from 7×3.1 to 29×13 — the difference between guessing and reading.
+Above 720px the map is fully interactive: hover and click to name any country,
+`+`/`−`/Reset, and **region buttons** (Whole world, Europe, Africa, Asia,
+Americas, Oceania) that frame a continent — pressing one again goes back to
+the world. The region bounds are hand-picked degrees rather than computed from
+each region's countries, because a computed box gets dragged to the horizon by
+Alaska, by Russia crossing the date line, or by one far-flung island. Natural
+Earth curves its meridians, so `showRegion` samples along all four edges of
+the box and takes the extent of the projected points. **A region changes only
+what the map shows, never which books are listed** — it is a place to look,
+not a filter. On a touch tablet, a tap in the sea still reaches up to 32px for
+a read country, which is where forgiving taps earn their keep.
 
-  The bounds are hand-picked degrees rather than computed from each region's
-  countries: a computed box gets dragged to the horizon by Alaska, by Russia
-  crossing the date line, or by one far-flung island, and would shift every
-  time a book is added. Europe stops at 67°N because the Arctic tips of
-  Norway, Sweden and Finland cost more magnification across the whole
-  continent than they are worth; Iceland still fits. Natural Earth curves its
-  meridians, so `showRegion` samples along all four edges of the box and takes
-  the extent of the projected points — a plain corner-to-corner rectangle
-  slices the top off northern regions.
+A vertical drag on the map is always a page scroll at every size.
+`touch-action` stays `pan-y`, and above 720px pinch takes two fingers, never
+one, so the gesture is never ambiguous.
 
-  **A region changes only what the map shows, never which books are listed.**
-  Region is a place to look, not a filter; making "Europe" mean two different
-  things on one page would be worse than not having it.
-- **There is no pinch or drag on a phone.** Tried, and removed. The map
-  swallowed the scroll and the page felt broken. **The map is a picture you can
-  tap; regions get you closer; the country list underneath is how you pick one
-  precisely.** Resisting that split is what produced every mobile problem this
-  file documents.
-- **A vertical drag on the map is always a page scroll**, everywhere, at every
-  size. `touch-action` stays `pan-y` and the map never claims a single-finger
-  gesture, so it cannot trap the page. Above 720px the buttons and two-finger
-  pinch are available; two fingers, not one, so the gesture is never ambiguous.
-- **The book list starts at the six most recent** with a button for the rest.
-  The full list is already a long scroll on a phone and only gets longer.
-  Changing a filter collapses it again, and collapsing returns you to the top
-  of the list rather than stranding you in the footer. Nothing is capped on a
-  larger screen.
+**The book list starts at the six most recent** on a phone, with a button for
+the rest. The full list is already a long scroll there and only gets longer.
+Changing a filter collapses it again, and collapsing returns you to the top of
+the list rather than stranding you in the footer. Nothing is capped on a
+larger screen.
 
 ## Accessibility
 

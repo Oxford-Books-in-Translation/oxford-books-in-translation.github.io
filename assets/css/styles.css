@@ -1035,6 +1035,22 @@ code {
   font-size: 0.875rem;
 }
 
+/* Books still to come, above the list of books read. */
+.coming-up {
+  margin-bottom: clamp(1.75rem, 4vw, 2.5rem);
+}
+
+/* The date leads on an upcoming book: it is the thing you plan around. Set
+   like the other small labels, in ink rather than the link colour, because it
+   isn't clickable — see the note above --accent. */
+.book-card-date {
+  margin: 0 0 0.2rem;
+  color: var(--ink);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
 /* ---------- Footer ---------------------------------------------------- */
 
 .site-footer {
@@ -1118,16 +1134,24 @@ code {
   .map-figure {
     margin-inline: -20px;
   }
-  .map-figure .map-foot,
-  .map-figure .map-regions {
+  .map-figure .map-foot {
     padding-inline: 20px;
   }
 
-  /* No zoom on a phone. It was the wrong answer to small countries: panning a
-     zoomed map needs the same one-finger drag as scrolling the page, so the
-     map swallowed the scroll and the page felt stuck. The map is the glance;
-     the list of countries underneath is how you pick one precisely. */
-  .map-buttons {
+  /* On a phone the map is a picture, not a control. At this width the whole
+     world is 375px across and most countries are a few pixels wide, and every
+     attempt to make it tappable — forgiving taps, pinch, drag, zoom buttons,
+     region buttons — made the page worse to use. The list of countries
+     directly underneath does the job properly, and the map still outlines and
+     names whatever you pick there.
+
+     pointer-events: none means a touch on the map is simply a touch on the
+     page: it scrolls, and nothing on the map can intercept it. */
+  #map {
+    pointer-events: none;
+  }
+  .map-buttons,
+  .map-regions {
     display: none;
   }
 

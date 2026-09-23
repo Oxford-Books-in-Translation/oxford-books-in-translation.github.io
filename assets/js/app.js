@@ -399,6 +399,47 @@ function renderCountryPanel() {
   }
 }
 
+/* -------------------------------------------------------------- coming up */
+
+const UPCOMING_DATE = new Intl.DateTimeFormat('en-GB', {
+  weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC',
+});
+const UPCOMING_DATE_WITH_YEAR = new Intl.DateTimeFormat('en-GB', {
+  weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC',
+});
+
+/**
+ * Books with a date still to come, soonest first. The weekday is in the date
+ * because "Fri 16 Oct" is how people actually plan an evening; the year only
+ * appears when it isn't this one, so a December list looking into January
+ * still reads correctly.
+ */
+function renderComingUp() {
+  const block = $('coming-up');
+  const list = $('coming-up-books');
+  list.replaceChildren();
+
+  if (!data.upcoming.length) {
+    block.hidden = true;
+    return;
+  }
+
+  const thisYear = new Date().getFullYear();
+  for (const book of data.upcoming) {
+    const when = new Date(book.dateValue);
+    const date = (when.getUTCFullYear() === thisYear ? UPCOMING_DATE : UPCOMING_DATE_WITH_YEAR).format(when);
+    const meta = [book.author, book.language, book.translator && `trans. ${book.translator}`]
+      .filter(Boolean)
+      .join(' · ');
+    list.append(el('li', { class: 'book-card' }, [
+      el('p', { class: 'book-card-date', text: date }),
+      el('div', { class: 'book-card-title', text: book.title }),
+      el('p', { class: 'book-card-meta', text: meta }),
+    ]));
+  }
+  block.hidden = false;
+}
+
 /* ------------------------------------------------------------ book table */
 
 const SORTS = {
@@ -612,22 +653,25 @@ function setState(patch) {
 
 /**
  * Put the map and the answer on screen together, but only when they aren't
- * already. The panel sits under the map, and on a phone the map plus its
- * legend is most of a screen — so a tap made near the top of the page can
- * open a panel that is entirely below the fold, which looks exactly like
- * nothing happening.
+ * already. The map outlines and names the country you picked and the panel
+ * underneath lists its books; either one off screen looks like nothing
+ * happened. On a phone the country is picked from the list *below* the map,
+ * so the map is usually the one out of view.
  *
  * Aligning the map rather than the panel is deliberate: scrolling the panel
  * itself into view would push the map off the top, which is the disorienting
- * jump this layout exists to avoid. Landing on the map keeps "I tapped there,
- * the answer appeared underneath" intact.
+ * jump this layout exists to avoid. Landing on the map shows the picked
+ * country first and its books directly beneath.
  */
 function revealCountryPanel() {
   const panel = $('country-panel');
   if (panel.hidden) return;
 
+  const map = $('map').getBoundingClientRect();
   const box = panel.getBoundingClientRect();
-  if (box.top >= 0 && box.bottom <= window.innerHeight) return;
+  const mapInView = map.top >= 0 && map.bottom <= window.innerHeight;
+  const panelInView = box.top >= 0 && box.top < window.innerHeight;
+  if (mapInView && panelInView) return;
 
   scrollPageTo(document.querySelector('.map-figure'));
 }
@@ -726,15 +770,36 @@ function buildFilters() {
   $('country-clear').addEventListener('click', () => setState({ country: '' }));
 }
 
+// Matches the phone section of styles.css, where the map takes no input.
+const phoneWidth = window.matchMedia('(max-width: 719px)');
+
 function setMapHint() {
   const coarse = window.matchMedia('(pointer: coarse)').matches;
-  // Say that every country answers, not just the shaded ones — otherwise you
-  // would have to already know it to find out. On a phone the shapes are too
-  // small to hit reliably, so the list stays in the sentence.
-  $('map-hint').textContent = coarse
-    ? 'Choose a region to see it close up. Tap any country to name it; shaded ones open their books.'
-    : 'Hover or click any country to name it; shaded ones open their books. Ctrl + scroll to zoom, drag to pan.';
+  // Say what the map actually does at this size. On a phone it is a picture,
+  // so the sentence points at the list that replaced tapping it. Elsewhere,
+  // say that every country answers, not just the shaded ones — otherwise you
+  // would have to already know it to find out.
+  let hint;
+  if (phoneWidth.matches) {
+    hint = 'Pick a country from the list below to see it on the map and read its books.';
+  } else if (coarse) {
+    hint = 'Tap any country to name it; shaded ones open their books. Choose a region to see it close up.';
+  } else {
+    hint = 'Hover or click any country to name it; shaded ones open their books. Ctrl + scroll to zoom, drag to pan.';
+  }
+  $('map-hint').textContent = hint;
 }
+
+// Turning a tablet to portrait crosses into phone width. The map resets
+// itself to the whole world there, so let go of any region too, or it would
+// still be lit when the tablet turns back.
+phoneWidth.addEventListener('change', () => {
+  setMapHint();
+  if (phoneWidth.matches && mapRegion !== 'world') {
+    mapRegion = 'world';
+    syncRegionButtons();
+  }
+});
 
 async function init() {
   initTheme();
@@ -757,6 +822,7 @@ async function init() {
   });
 
   renderStats();
+  renderComingUp();
   renderRegions();
   renderLegend();
   renderCountryIndex();

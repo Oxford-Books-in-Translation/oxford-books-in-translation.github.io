@@ -36,10 +36,24 @@ export async function loadData() {
   const columnCheck = validateColumns(columns);
   if (columnCheck.errors.length) throw new Error(columnCheck.errors.join(' '));
 
-  const { books, errors, warnings } = validateBooks(records, countries);
+  const { books: allBooks, errors, warnings } = validateBooks(records, countries);
+
+  // A row dated after today is a book we're going to read, not one we have.
+  // It is listed as coming up but counted nowhere — not on the map, not in the
+  // figures, not in the languages or translators — until its day arrives, when
+  // it joins everything else with no edit needed. A book counts from the day
+  // it is discussed. Rows whose date failed validation have no date and stay
+  // with the books read, where the warning banner can point at them.
+  const today = localIsoDate(new Date());
+  const isUpcoming = (book) => Boolean(book.dateDiscussed) && book.dateDiscussed > today;
+  const books = allBooks.filter((book) => !isUpcoming(book));
+  const upcoming = allBooks
+    .filter(isUpcoming)
+    .sort((a, b) => a.dateDiscussed.localeCompare(b.dateDiscussed));
 
   return {
     books,
+    upcoming,
     countries,
     topology,
     byCountry: groupByCountry(books, countries),
@@ -48,6 +62,17 @@ export async function loadData() {
     // The site draws no distinction: both are things for a human to look at.
     warnings: [...errors, ...columnCheck.warnings, ...warnings],
   };
+}
+
+/**
+ * Today as YYYY-MM-DD in the viewer's own time zone. ISO dates compare
+ * correctly as strings, and using local rather than UTC means a book night
+ * counts as read from midnight on the day, not from 1am during British
+ * Summer Time.
+ */
+export function localIsoDate(date) {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
 function groupByCountry(books, countries) {
