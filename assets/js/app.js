@@ -392,11 +392,36 @@ function renderComingUp() {
     const meta = [book.author, book.language, book.translator && `trans. ${book.translator}`]
       .filter(Boolean)
       .join(' · ');
-    list.append(el('li', { class: 'book-card' }, [
-      el('p', { class: 'book-card-date', text: date }),
-      el('div', { class: 'book-card-title', text: book.title }),
-      el('p', { class: 'book-card-meta', text: meta }),
-    ]));
+
+    const card = el('li', { class: 'book-card' }, [
+      el('div', { class: 'book-card-body' }, [
+        el('p', { class: 'book-card-date', text: date }),
+        el('div', { class: 'book-card-title', text: book.title }),
+        el('p', { class: 'book-card-meta', text: meta }),
+      ]),
+    ]);
+
+    if (book.cover) {
+      // Empty alt: the title sits right beside the cover, so describing the
+      // image as well would make a screen reader say the title twice.
+      const cover = el('img', {
+        class: 'book-cover',
+        src: `covers/${book.cover}`,
+        alt: '',
+        loading: 'lazy',
+        decoding: 'async',
+      });
+      // A missing file shows no cover rather than a broken-image icon. The
+      // validator catches it before a push; this is for whatever gets past.
+      cover.addEventListener('error', () => {
+        cover.remove();
+        card.classList.remove('has-cover');
+      });
+      card.prepend(cover);
+      card.classList.add('has-cover');
+    }
+
+    list.append(card);
   }
   block.hidden = false;
 }

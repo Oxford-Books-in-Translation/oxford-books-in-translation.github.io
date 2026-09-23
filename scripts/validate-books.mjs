@@ -12,7 +12,7 @@
  * this check and the page can never disagree.
  */
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 
@@ -55,6 +55,15 @@ if (columnCheck.errors.length) {
 
 const { books, errors, warnings } = validateBooks(records, countries);
 const allWarnings = [...columnCheck.warnings, ...warnings];
+
+// Only this script can see the disk, so it is the one that checks a named
+// cover was actually committed. The page copes with a missing file by showing
+// no cover, which is exactly why nobody would notice without this.
+for (const book of books) {
+  if (book.cover && !existsSync(join(root, 'covers', book.cover))) {
+    errors.push(`Row ${book.line} (${book.title}): cover "${book.cover}" is not in covers/.`);
+  }
+}
 
 for (const error of errors) console.error(`${colour.red('error')}  ${error}`);
 for (const warning of allWarnings) console.error(`${colour.yellow('warn')}   ${warning}`);

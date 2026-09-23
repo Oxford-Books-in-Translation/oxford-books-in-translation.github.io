@@ -17,11 +17,16 @@ export const REQUIRED_COLUMNS = [
 
 export const KNOWN_COLUMNS = [
   'title', 'original_title', 'author', 'author_nationality', 'original_language',
-  'translator', 'year_published', 'date_discussed', 'notes',
+  'translator', 'year_published', 'date_discussed', 'notes', 'cover',
 ];
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const YEAR_RE = /^-?\d{1,4}$/;
+
+// A cover is a bare file name in covers/. Not a path, and not a URL: images
+// are committed like the fonts and D3 are, so the page never asks another
+// site for anything and a publisher changing its website can't break it.
+const COVER_RE = /^[a-z0-9][a-z0-9._-]*\.(jpe?g|png|webp)$/i;
 
 export function clean(value) {
   return typeof value === 'string' ? value.trim().replace(/\s+/g, ' ') : '';
@@ -83,6 +88,7 @@ export function validateBooks(records, countries) {
       year: clean(record.year_published),
       dateDiscussed: clean(record.date_discussed),
       notes: clean(record.notes),
+      cover: clean(record.cover),
       line,
     };
 
@@ -120,6 +126,14 @@ export function validateBooks(records, countries) {
     if (book.year && !YEAR_RE.test(book.year)) {
       errors.push(`${where}: year_published "${book.year}" is not a year.`);
       book.year = '';
+    }
+
+    if (book.cover && !COVER_RE.test(book.cover)) {
+      errors.push(
+        `${where}: cover "${book.cover}" should be just a file name in covers/, ` +
+        `like "the-door.jpg" — not a path or a web address.`,
+      );
+      book.cover = '';
     }
 
     book.yearValue = book.year ? Number(book.year) : null;

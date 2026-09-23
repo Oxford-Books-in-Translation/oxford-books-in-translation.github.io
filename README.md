@@ -46,6 +46,36 @@ Desktop, or from a text editor. If you edit the file in Excel, save it as
 | `year_published` | no | Year of original publication |
 | `date_discussed` | yes | `YYYY-MM-DD`, the date of the meeting |
 | `notes` | no | Short free text, shown under the title in the book list |
+| `cover` | no | File name of a cover image in `covers/`, e.g. `the-door.jpg` |
+
+### Covers
+
+Covers are chosen by hand, one per book, and are optional — a row without one
+looks normal. At the moment they appear under **Coming up**, where a
+recognisable cover is most useful: it's what people look for in a bookshop.
+
+1. Find the cover **of the edition you read**. Translations often have their
+   own covers, and the translator is half the point here.
+2. Resize it to 360px wide and save it in `covers/` with a lower-case, hyphenated
+   name. On Windows, `scripts/make-cover.ps1` does both from a WebP, PNG or
+   JPEG of any size and prints the result — aim for 25–40KB:
+
+   ```powershell
+   scripts/make-cover.ps1 -In "C:\path\to\download.webp" -Out covers\the-door.jpg
+   ```
+
+3. Put the file name in the row's `cover` column.
+
+The value must be a bare file name, not a path or a web address — images are
+committed like the fonts, so the page never fetches anything from another site.
+`validate-books.mjs` rejects a web address and fails if the named file isn't
+in `covers/`. If a file does go missing, the page quietly shows no cover rather
+than a broken-image icon.
+
+Covers are copyrighted artwork. Showing them small to identify a book on a
+non-commercial reading list is ordinary practice — it's what bookshops,
+libraries and review sites do — but if a publisher ever asked, delete the file
+and clear the column.
 
 Translators are counted, listed and clickable, so write them as they should
 appear: forename first, and separated by a comma or "and" when a book has more
@@ -218,6 +248,8 @@ vendor/fonts/              Fraunces and Newsreader (woff2, latin)
 scripts/validate-books.mjs the data check
 scripts/check-contrast.mjs the colour check
 scripts/serve.mjs          local preview server
+scripts/make-cover.ps1     resizes a cover image for covers/ (Windows)
+covers/                    cover images, chosen by hand
 tools/share-card.html      draws the link-preview image from the live map
 ```
 
@@ -229,8 +261,12 @@ opens it.
 ## A note on the design
 
 Laid out as a printed page rather than a dashboard. Warm paper rather than
-screen-white, type doing the work, no imagery, and no cards, boxes or shadows —
-loosely in the spirit of publishers who put the words first. **Fraunces** sets
+screen-white, type doing the work, and no cards, boxes or shadows — loosely in
+the spirit of publishers who put the words first. The one kind of image is a
+book's own cover, set the way a publisher's catalogue sets them: beside the
+text, at one width, with a hairline edge. Covers bring every colour going, so
+they stay inside a book-shaped rectangle and never appear where colour carries
+meaning — not on the map, not in the figures. **Fraunces** sets
 the display type and **Newsreader** the reading type (both open licence, both
 committed to the repo).
 

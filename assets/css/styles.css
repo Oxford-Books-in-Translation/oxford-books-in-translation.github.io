@@ -1013,6 +1013,31 @@ code {
   margin-bottom: clamp(1.75rem, 4vw, 2.5rem);
 }
 
+/* A cover beside the text. It's there to be recognised on a bookshop table,
+   so it is shown fairly large, and it sits at the top of the text rather than
+   centred against it, the way a catalogue sets them. */
+.book-card.has-cover {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.book-cover {
+  display: block;
+  width: clamp(96px, 22vw, 132px);
+  height: auto;
+  /* Holds a book-shaped space before the file arrives, then takes the
+     cover's own proportions, so nothing jumps when it loads and no cover
+     gets cropped to fit a standard shape. */
+  aspect-ratio: auto 2 / 3;
+  /* A hairline so a pale cover doesn't dissolve into the paper, or a dark
+     one into the dark theme. */
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: var(--plane);
+}
+
 /* The date leads on an upcoming book: it is the thing you plan around. Set
    like the other small labels, in ink rather than the link colour, because it
    isn't clickable — see the note above --accent. */
