@@ -8,7 +8,7 @@
  */
 
 import { loadData, countryNames, formatDate, languageTag, isRightToLeft } from './data.js';
-import { createMap, binClass, BIN_LABELS, REGION_VIEWS } from './map.js';
+import { createMap, binClass, BIN_LABELS } from './map.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -132,6 +132,11 @@ function renderStats() {
   $('stat-languages').textContent = data.byLanguage.size;
   $('stat-translators').textContent = data.byTranslator.size;
 
+  // Its own figure, so the four beside it can be read as "already read"
+  // without anyone having to wonder whether next month's book is in them.
+  $('stat-upcoming').textContent = data.upcoming.length;
+  $('stat-upcoming-figure').hidden = data.upcoming.length === 0;
+
   const pointOnly = map.pointOnlyCodes.length;
   $('stat-countries-note').textContent = pointOnly
     ? `${pointOnly} too small to shade — shown as dots`
@@ -149,50 +154,6 @@ function renderStats() {
 }
 
 /* ----------------------------------------------------------------- legend */
-
-/* ---------------------------------------------------------- map regions */
-
-/**
- * Buttons that frame a continent. This is how you get close enough to read
- * individual countries on a phone, where the whole world is 375px wide and
- * gestures are not available — and it changes only what the map shows, never
- * which books are listed. Region is a place to look, not a filter; mixing it
- * into the filters below would make "Europe" mean two different things on one
- * page.
- */
-let mapRegion = 'world';
-
-function renderRegions() {
-  const group = $('map-regions');
-  group.replaceChildren();
-
-  for (const view of REGION_VIEWS) {
-    const button = el('button', {
-      type: 'button',
-      class: 'region-btn',
-      'data-region': view.key,
-      'aria-pressed': String(mapRegion === view.key),
-      text: view.label,
-    });
-
-    button.addEventListener('click', () => {
-      // Pressing the region you are already in returns to the whole world,
-      // so the control can always undo itself without hunting for "Whole
-      // world" at the far end of the row.
-      mapRegion = mapRegion === view.key ? 'world' : view.key;
-      map.showRegion(mapRegion);
-      syncRegionButtons();
-    });
-
-    group.append(button);
-  }
-}
-
-function syncRegionButtons() {
-  for (const button of document.querySelectorAll('.region-btn')) {
-    button.setAttribute('aria-pressed', String(button.dataset.region === mapRegion));
-  }
-}
 
 function renderLegend() {
   const legend = $('legend');
@@ -783,23 +744,16 @@ function setMapHint() {
   if (phoneWidth.matches) {
     hint = 'Pick a country from the list below to see it on the map and read its books.';
   } else if (coarse) {
-    hint = 'Tap any country to name it; shaded ones open their books. Choose a region to see it close up.';
+    hint = 'Tap any country to name it; shaded ones open their books. Pinch with two fingers to zoom.';
   } else {
     hint = 'Hover or click any country to name it; shaded ones open their books. Ctrl + scroll to zoom, drag to pan.';
   }
   $('map-hint').textContent = hint;
 }
 
-// Turning a tablet to portrait crosses into phone width. The map resets
-// itself to the whole world there, so let go of any region too, or it would
-// still be lit when the tablet turns back.
-phoneWidth.addEventListener('change', () => {
-  setMapHint();
-  if (phoneWidth.matches && mapRegion !== 'world') {
-    mapRegion = 'world';
-    syncRegionButtons();
-  }
-});
+// A window narrowed into phone width changes what the map does, so the hint
+// has to change with it.
+phoneWidth.addEventListener('change', setMapHint);
 
 async function init() {
   initTheme();
@@ -823,7 +777,6 @@ async function init() {
 
   renderStats();
   renderComingUp();
-  renderRegions();
   renderLegend();
   renderCountryIndex();
   renderCoverageNote();
@@ -836,12 +789,7 @@ async function init() {
 
   $('zoom-in').addEventListener('click', () => map.zoomIn());
   $('zoom-out').addEventListener('click', () => map.zoomOut());
-  $('zoom-reset').addEventListener('click', () => {
-    map.reset();
-    // Otherwise a region would stay lit while the map showed the whole world.
-    mapRegion = 'world';
-    syncRegionButtons();
-  });
+  $('zoom-reset').addEventListener('click', () => map.reset());
 
   // Following a shared link while the page is already open changes only the
   // hash, which the browser treats as same-document — so apply it by hand.

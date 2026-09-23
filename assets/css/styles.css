@@ -227,6 +227,14 @@ code {
   padding-inline: 20px;
 }
 
+/* The hidden attribute always wins. The browser's own `[hidden] { display:
+   none }` loses to any author rule that sets display, and this site kept
+   tripping over that: the show-all button, the book table and the coming-up
+   figure each stayed visible after being hidden, because a class elsewhere
+   gave them display: block or flex. One rule here ends the whole class of
+   bug rather than patching each element as it's found. */
+[hidden] { display: none !important; }
+
 .visually-hidden {
   position: absolute;
   width: 1px; height: 1px;
@@ -599,41 +607,6 @@ code {
 
 @media (pointer: coarse) {
   .icon-btn { min-width: 40px; min-height: 40px; }
-}
-
-/* Region buttons: how you get close enough to read countries where there are
-   no gestures to spare. */
-.map-regions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 0.9rem;
-}
-
-.region-btn {
-  min-height: 34px;
-  padding: 0.35rem 0.7rem;
-  background: var(--surface);
-  color: var(--ink-2);
-  border: 1px solid var(--field-border);
-  border-radius: var(--radius-s);
-  font-family: var(--text);
-  font-size: 0.875rem;
-  line-height: 1;
-  cursor: pointer;
-}
-.region-btn:hover { color: var(--ink); border-color: var(--ink); }
-
-/* The region you are in reads as pressed by weight and ink, not by the link
-   colour — see the note above --accent. */
-.region-btn[aria-pressed="true"] {
-  color: var(--ink);
-  border-color: var(--ink);
-  box-shadow: inset 0 0 0 1px var(--ink);
-}
-
-@media (pointer: coarse) {
-  .region-btn { min-height: 40px; }
 }
 
 .map-foot {
@@ -1150,8 +1123,7 @@ code {
   #map {
     pointer-events: none;
   }
-  .map-buttons,
-  .map-regions {
+  .map-buttons {
     display: none;
   }
 

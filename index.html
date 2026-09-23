@@ -60,6 +60,12 @@
           <span class="figure-value" id="stat-translators">&mdash;</span>
           <span class="figure-label">Translators</span>
         </div>
+        <!-- Planned books are counted separately, so the figures beside it
+             never include a book nobody has read yet. Hidden when none. -->
+        <div class="figure" id="stat-upcoming-figure" hidden>
+          <span class="figure-value" id="stat-upcoming">&mdash;</span>
+          <span class="figure-label">Coming up</span>
+        </div>
       </div>
       <div class="masthead-links">
         <a class="masthead-link"
@@ -131,13 +137,6 @@
             <button type="button" id="zoom-reset" class="icon-btn" aria-label="Reset the map view">Reset</button>
           </div>
         </div>
-
-        <!-- Jumping to a region is a button, not a gesture. Pinch and drag
-             have to be taken off the page's own scrolling and something always
-             loses that fight; pressing a region competes with nothing, works
-             by keyboard, and lands on a framing someone chose. -->
-        <div class="map-regions" id="map-regions" role="group"
-             aria-label="Zoom the map to a region"></div>
 
         <figcaption class="map-foot">
           <div id="legend" class="legend"></div>

@@ -17,11 +17,17 @@ site sorts by `date_discussed`.
 
 **Books you haven't read yet can go in now.** Give them the date of the book
 night they're planned for. Anything dated after today appears under **Coming
-up** at the top of the book list and is counted nowhere else — not on the map,
-not in the figures, not in the languages or translators — so the page never
-claims a book was read before it was. On the day itself it moves onto the map
-and into the list on its own; nothing needs editing. If a date changes, just
+up** at the top of the book list, and in a **Coming up** figure of its own at
+the top of the page. It is counted nowhere else — not on the map, not in the
+other figures, not in the languages or translators — so the page never claims
+a book was read before it was. On the day itself it moves onto the map and
+into the list on its own; nothing needs editing. If a date changes, just
 change the row.
+
+For about ten minutes after a push that changes both the site's code and
+`books.csv`, a browser that already had the page open can show new rows with
+the old code. The CSV is always fetched fresh; the code is cached by GitHub
+Pages for ten minutes. A reload after that sorts it.
 
 You can do all three from GitHub's web editor in a browser, from GitHub
 Desktop, or from a text editor. If you edit the file in Excel, save it as
@@ -228,7 +234,7 @@ loosely in the spirit of publishers who put the words first. **Fraunces** sets
 the display type and **Newsreader** the reading type (both open licence, both
 committed to the repo).
 
-The page opens with a masthead and a colophon of three figures under a rule.
+The page opens with a masthead and a colophon of figures under a rule.
 Each section is introduced by a numeral and a rule, running text is held to a
 comfortable measure (about 38rem) while the map and the book list run the full
 width, and quiet labels wear letterspaced caps. The asymmetry between the
@@ -272,8 +278,11 @@ we've read. Everything tried to get round that made the page worse:
   something always loses that fight. In practice the map swallowed the scroll
   and the page felt stuck.
 - **A frame that grew when zoomed** jumped the layout around under your thumb.
-- **Region buttons** worked, but six buttons to operate a picture was more
-  machinery than the map was worth at that size.
+- **Region buttons** (Whole world, Europe, Africa…) framed a continent and
+  worked, but six buttons to operate a picture was more machinery than the map
+  was worth at that size. Once the phone map became static they had no job
+  left — on a larger screen the map is big enough without them — so they were
+  removed everywhere.
 
 The list does the job properly. So on a phone:
 
@@ -294,16 +303,9 @@ The list does the job properly. So on a phone:
   working the list there, not looking at the map.
 
 Above 720px the map is fully interactive: hover and click to name any country,
-`+`/`−`/Reset, and **region buttons** (Whole world, Europe, Africa, Asia,
-Americas, Oceania) that frame a continent — pressing one again goes back to
-the world. The region bounds are hand-picked degrees rather than computed from
-each region's countries, because a computed box gets dragged to the horizon by
-Alaska, by Russia crossing the date line, or by one far-flung island. Natural
-Earth curves its meridians, so `showRegion` samples along all four edges of
-the box and takes the extent of the projected points. **A region changes only
-what the map shows, never which books are listed** — it is a place to look,
-not a filter. On a touch tablet, a tap in the sea still reaches up to 32px for
-a read country, which is where forgiving taps earn their keep.
+and `+`/`−`/Reset to zoom, where `+` zooms toward the country you last picked.
+On a touch tablet, a tap in the sea still reaches up to 32px for a read
+country, which is where forgiving taps earn their keep.
 
 A vertical drag on the map is always a page scroll at every size.
 `touch-action` stays `pan-y`, and above 720px pinch takes two fingers, never
