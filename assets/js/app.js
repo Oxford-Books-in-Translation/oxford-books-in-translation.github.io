@@ -370,11 +370,75 @@ const UPCOMING_DATE_WITH_YEAR = new Intl.DateTimeFormat('en-GB', {
 });
 
 /**
- * Books with a date still to come, soonest first. The weekday is in the date
- * because "Fri 16 Oct" is how people actually plan an evening; the year only
- * appears when it isn't this one, so a December list looking into January
- * still reads correctly.
+ * "Fri 16 Oct". The weekday is there because that's how people actually plan
+ * an evening; the year only appears when it isn't this one, so a December
+ * page looking ahead to January still reads correctly.
  */
+function upcomingDate(book) {
+  const when = new Date(book.dateValue);
+  const format = when.getUTCFullYear() === new Date().getFullYear()
+    ? UPCOMING_DATE
+    : UPCOMING_DATE_WITH_YEAR;
+  return format.format(when);
+}
+
+/**
+ * "RSVP ↗" to the book night's Meetup page, or null if the row has none.
+ *
+ * A plain link in the site's link style, not a button: it goes to another
+ * page, and nothing on this site looks clickable unless it is a link or a
+ * control (see the note above --accent in styles.css). The ↗ marks it as
+ * leaving the site, like the Meetup link in the masthead.
+ *
+ * Visually it's just "RSVP", but with two books coming up a screen reader
+ * listing the links would hear "RSVP, RSVP". The hidden words make each one
+ * say which book night it is for.
+ */
+function rsvpLink(book) {
+  if (!book.eventUrl) return null;
+  return el('a', { class: 'rsvp-link', href: book.eventUrl }, [
+    'RSVP',
+    el('span', { class: 'visually-hidden', text: ` for ${book.title} on Meetup` }),
+    el('span', { class: 'external-mark', 'aria-hidden': 'true', text: '↗' }),
+  ]);
+}
+
+/**
+ * The next book night in the masthead: the one thing on the page that is
+ * about the future, and the first thing most members come to find out.
+ */
+function renderNextUp() {
+  const block = $('next-up');
+  const book = data.upcoming[0];
+  if (!book) {
+    block.hidden = true;
+    return;
+  }
+
+  $('next-up-when').textContent = `Next book night · ${upcomingDate(book)}`;
+  $('next-up-title').textContent = book.title;
+  $('next-up-meta').textContent = [book.author, book.translator && `trans. ${book.translator}`]
+    .filter(Boolean)
+    .join(' · ');
+
+  const rsvp = $('next-up-rsvp');
+  rsvp.replaceChildren();
+  const link = rsvpLink(book);
+  if (link) rsvp.append(link);
+  rsvp.hidden = !link;
+
+  const cover = $('next-up-cover');
+  if (book.cover) {
+    // Above the fold, so it loads straight away rather than lazily; the
+    // Coming up list further down reuses the same cached file.
+    cover.addEventListener('error', () => { cover.hidden = true; }, { once: true });
+    cover.src = `covers/${book.cover}`;
+    cover.hidden = false;
+  }
+  block.hidden = false;
+}
+
+/** Books with a date still to come, soonest first. */
 function renderComingUp() {
   const block = $('coming-up');
   const list = $('coming-up-books');
@@ -385,10 +449,8 @@ function renderComingUp() {
     return;
   }
 
-  const thisYear = new Date().getFullYear();
   for (const book of data.upcoming) {
-    const when = new Date(book.dateValue);
-    const date = (when.getUTCFullYear() === thisYear ? UPCOMING_DATE : UPCOMING_DATE_WITH_YEAR).format(when);
+    const date = upcomingDate(book);
     const meta = [book.author, book.language, book.translator && `trans. ${book.translator}`]
       .filter(Boolean)
       .join(' · ');
@@ -398,6 +460,7 @@ function renderComingUp() {
         el('p', { class: 'book-card-date', text: date }),
         el('div', { class: 'book-card-title', text: book.title }),
         el('p', { class: 'book-card-meta', text: meta }),
+        book.eventUrl && el('p', { class: 'book-card-rsvp' }, [rsvpLink(book)]),
       ]),
     ]);
 
@@ -801,6 +864,7 @@ async function init() {
   });
 
   renderStats();
+  renderNextUp();
   renderComingUp();
   renderLegend();
   renderCountryIndex();
@@ -818,7 +882,14 @@ async function init() {
 
   // Following a shared link while the page is already open changes only the
   // hash, which the browser treats as same-document — so apply it by hand.
-  window.addEventListener('hashchange', () => setState(readHash()));
+  window.addEventListener('hashchange', () => {
+    // The hash carries two things: shared filter state (#country=HUN) and
+    // ordinary in-page links (#books, #coming-up). Only the first is ours to
+    // read. Treating a plain #books as state parsed it as "no filters" and
+    // quietly cleared whatever you had chosen, just for using the skip link.
+    if (location.hash && !location.hash.includes('=')) return;
+    setState(readHash());
+  });
 
   window.addEventListener('scroll', () => tooltip.hide(), { passive: true });
 }

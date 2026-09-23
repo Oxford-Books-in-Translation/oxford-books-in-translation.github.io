@@ -279,6 +279,80 @@ code {
   text-wrap: pretty;
 }
 
+/* Title on the left, the next book night on the right, both sitting on the
+   rule below. When the two don't fit side by side — tablets in portrait,
+   phones — the next book drops under the tagline on its own; flex-wrap
+   decides, so there's no breakpoint to keep in step with anything. */
+.masthead-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.1rem 2rem;
+}
+/* Bases chosen so the two still fit side by side on an iPad mini in
+   portrait (680px of content) and only stack on phones. */
+.masthead-title { flex: 1 1 20rem; min-width: 0; }
+
+.next-up {
+  flex: 0 1 18.5rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+}
+
+/* Small on purpose: a detail beside the title, not a banner over it. The
+   same treatment as the covers in Coming up, one size down. */
+.next-up-cover {
+  flex: none;
+  width: 64px;
+  height: auto;
+  aspect-ratio: auto 2 / 3;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: var(--plane);
+}
+
+.next-up-text { min-width: 0; }
+
+/* Ink, not the link colour: it isn't clickable — see the note above --accent. */
+.next-up-when {
+  margin: 0 0 0.35rem;
+  color: var(--ink);
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.next-up-title {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.0625rem;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.next-up-rsvp,
+.book-card-rsvp { margin: 0.35rem 0 0; }
+
+/* Styled like the masthead's Meetup link, which is the site's pattern for a
+   link that leaves it: the link colour, underlined, with the ↗. Held to the
+   24px minimum target, since it stands alone rather than inside a sentence. */
+.rsvp-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  font-size: 0.9375rem;
+  white-space: nowrap;
+}
+
+.next-up-meta {
+  margin: 0.25rem 0 0;
+  color: var(--ink-2);
+  font-size: 0.875rem;
+  line-height: 1.35;
+}
+
 .theme-toggle {
   flex: none;
   display: inline-flex;
@@ -364,6 +438,19 @@ code {
   color: var(--muted);
 }
 
+/* "Coming up" is the one figure that goes somewhere, so it is the one that
+   looks like a link: the label takes the link colour and the underline, and
+   the number stays ink so the row of figures still reads as a row. The label
+   sets its colour explicitly, so an in-page link doesn't turn into the duller
+   visited colour after one click. */
+.figure-link { text-decoration: none; }
+.figure-link .figure-value { color: var(--ink); }
+.figure-link .figure-label {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .figure-note {
   margin: 0.5rem 0 0;
   color: var(--muted);
@@ -396,7 +483,16 @@ code {
 /* The map follows the masthead directly — it doesn't need a second big gap. */
 .section:first-of-type { padding-top: clamp(1.5rem, 3vw, 2.25rem); }
 
-.section > .wrap { border-top: 1px solid var(--ink); padding-top: 1.4rem; }
+/* The section rule is drawn inside the content box, not as the wrap's own
+   border: a border on .wrap runs through its side padding, which left every
+   section rule 32px wider on each side than the masthead rule and the text
+   above and below it. */
+.section > .wrap::before {
+  content: "";
+  display: block;
+  border-top: 1px solid var(--ink);
+  margin-bottom: 1.4rem;
+}
 
 /* The selected country's books, sitting directly under the map. */
 .country-panel {
@@ -1076,6 +1172,10 @@ code {
   .index-list { columns: 4; }
   /* Running text keeps a comfortable measure while the map runs full width. */
   .section-head { max-width: var(--measure); }
+  /* Room to spare beside the title here, so the next book takes enough of it
+     for author and translator to hold one line. Wrapped, they pushed the
+     block past the height of its cover and the whole masthead grew. */
+  .next-up { flex-basis: 24rem; }
 }
 
 /* ---------- Narrow screens: the list becomes stacked records ---------- */
@@ -1173,6 +1273,10 @@ code {
   .show-all:not([hidden]) { display: block; }
 
   .masthead { padding-block: 1.25rem 0; }
+  /* Stacked under the tagline here, so it costs height: take the full width
+     so the text wraps less, and a slightly smaller cover. */
+  .next-up { flex-basis: 100%; }
+  .next-up-cover { width: 52px; }
   /* Tight enough that the three figures hold one line on a narrow phone. */
   .figure-value { font-size: 1.375rem; }
   .figures { gap: 0.4rem 0.9rem; }

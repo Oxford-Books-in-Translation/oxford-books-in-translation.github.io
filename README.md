@@ -18,7 +18,13 @@ site sorts by `date_discussed`.
 **Books you haven't read yet can go in now.** Give them the date of the book
 night they're planned for. Anything dated after today appears under **Coming
 up** at the top of the book list, and in a **Coming up** figure of its own at
-the top of the page. It is counted nowhere else — not on the map, not in the
+the top of the page. The soonest one also appears in the masthead as **Next
+book night**, with its cover if it has one — beside the title on a tablet or
+wider, so it costs no height, and under the tagline on a phone.
+
+Give an upcoming book its Meetup event page in `event_url` and it gets an
+**RSVP ↗** link, both in the masthead and under Coming up. Once the date has
+passed the link disappears on its own, since there's nothing left to RSVP to. It is counted nowhere else — not on the map, not in the
 other figures, not in the languages or translators — so the page never claims
 a book was read before it was. On the day itself it moves onto the map and
 into the list on its own; nothing needs editing. If a date changes, just
@@ -47,6 +53,7 @@ Desktop, or from a text editor. If you edit the file in Excel, save it as
 | `date_discussed` | yes | `YYYY-MM-DD`, the date of the meeting |
 | `notes` | no | Short free text, shown under the title in the book list |
 | `cover` | no | File name of a cover image in `covers/`, e.g. `the-door.jpg` |
+| `event_url` | no | The book night's Meetup event page. Upcoming books show an **RSVP** link to it |
 
 ### Covers
 

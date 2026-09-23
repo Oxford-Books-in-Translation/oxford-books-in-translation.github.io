@@ -17,7 +17,7 @@ export const REQUIRED_COLUMNS = [
 
 export const KNOWN_COLUMNS = [
   'title', 'original_title', 'author', 'author_nationality', 'original_language',
-  'translator', 'year_published', 'date_discussed', 'notes', 'cover',
+  'translator', 'year_published', 'date_discussed', 'notes', 'cover', 'event_url',
 ];
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -27,6 +27,10 @@ const YEAR_RE = /^-?\d{1,4}$/;
 // are committed like the fonts and D3 are, so the page never asks another
 // site for anything and a publisher changing its website can't break it.
 const COVER_RE = /^[a-z0-9][a-z0-9._-]*\.(jpe?g|png|webp)$/i;
+
+// The book night's event page, for the RSVP link. A whole https address —
+// this one is a link people follow, not something the page loads.
+const EVENT_URL_RE = /^https:\/\/[^\s"<>]+$/i;
 
 export function clean(value) {
   return typeof value === 'string' ? value.trim().replace(/\s+/g, ' ') : '';
@@ -89,6 +93,7 @@ export function validateBooks(records, countries) {
       dateDiscussed: clean(record.date_discussed),
       notes: clean(record.notes),
       cover: clean(record.cover),
+      eventUrl: clean(record.event_url),
       line,
     };
 
@@ -134,6 +139,14 @@ export function validateBooks(records, countries) {
         `like "the-door.jpg" — not a path or a web address.`,
       );
       book.cover = '';
+    }
+
+    if (book.eventUrl && !EVENT_URL_RE.test(book.eventUrl)) {
+      errors.push(
+        `${where}: event_url "${book.eventUrl}" should be a full web address ` +
+        `starting https://, like the Meetup event page.`,
+      );
+      book.eventUrl = '';
     }
 
     book.yearValue = book.year ? Number(book.year) : null;

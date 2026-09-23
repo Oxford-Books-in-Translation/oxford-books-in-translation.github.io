@@ -38,9 +38,27 @@
      the theme control sharing a single baseline row. -->
 <header class="masthead">
   <div class="wrap">
-    <h1>Oxford Books in Translation</h1>
-    <p class="tagline">Every book we&rsquo;ve read, where its author is from,
-      and the language it was written in.</p>
+    <div class="masthead-top">
+      <div class="masthead-title">
+        <h1>Oxford Books in Translation</h1>
+        <p class="tagline">Every book we&rsquo;ve read, where its author is from,
+          and the language it was written in.</p>
+      </div>
+
+      <!-- The next book night, with its cover. It answers the question most
+           people arrive with, and on a wide screen it sits in the empty space
+           beside the title, so it costs no height. Hidden when nothing is
+           scheduled. -->
+      <aside class="next-up" id="next-up" aria-labelledby="next-up-when" hidden>
+        <img class="next-up-cover" id="next-up-cover" alt="" hidden>
+        <div class="next-up-text">
+          <p class="next-up-when" id="next-up-when"></p>
+          <p class="next-up-title" id="next-up-title"></p>
+          <p class="next-up-meta" id="next-up-meta"></p>
+          <p class="next-up-rsvp" id="next-up-rsvp" hidden></p>
+        </div>
+      </aside>
+    </div>
 
     <div class="colophon">
       <div class="figures" aria-label="Summary">
@@ -61,11 +79,12 @@
           <span class="figure-label">Translators</span>
         </div>
         <!-- Planned books are counted separately, so the figures beside it
-             never include a book nobody has read yet. Hidden when none. -->
-        <div class="figure" id="stat-upcoming-figure" hidden>
+             never include a book nobody has read yet. The only figure that is
+             a link: it goes to the list of what's coming. Hidden when none. -->
+        <a class="figure figure-link" id="stat-upcoming-figure" href="#coming-up" hidden>
           <span class="figure-value" id="stat-upcoming">&mdash;</span>
           <span class="figure-label">Coming up</span>
-        </div>
+        </a>
       </div>
       <div class="masthead-links">
         <a class="masthead-link"
