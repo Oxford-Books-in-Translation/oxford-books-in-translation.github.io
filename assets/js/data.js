@@ -60,7 +60,12 @@ export async function loadData() {
     byLanguage: groupByLanguage(books),
     byTranslator: groupByTranslator(books),
     // The site draws no distinction: both are things for a human to look at.
-    warnings: [...errors, ...columnCheck.warnings, ...warnings],
+    // Column warnings are left out on purpose. An unrecognised column is
+    // simply ignored, so it harms nothing, and the banner is seen by everyone
+    // who visits, not just whoever maintains the CSV — it appeared for a few
+    // minutes after the event_url column was added, whenever a browser still
+    // held the old code. `npm run check` still reports it before a push.
+    warnings: [...errors, ...warnings],
   };
 }
 

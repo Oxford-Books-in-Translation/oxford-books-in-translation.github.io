@@ -383,23 +383,21 @@ function upcomingDate(book) {
 }
 
 /**
- * "RSVP ↗" to the book night's Meetup page, or null if the row has none.
+ * "RSVP", linking to the book night's Meetup page, or null if the row has none.
  *
  * A plain link in the site's link style, not a button: it goes to another
  * page, and nothing on this site looks clickable unless it is a link or a
- * control (see the note above --accent in styles.css). The ↗ marks it as
- * leaving the site, like the Meetup link in the masthead.
+ * control (see the note above --accent in styles.css).
  *
  * Visually it's just "RSVP", but with two books coming up a screen reader
  * listing the links would hear "RSVP, RSVP". The hidden words make each one
- * say which book night it is for.
+ * say which book night it is for, and where it goes.
  */
 function rsvpLink(book) {
   if (!book.eventUrl) return null;
   return el('a', { class: 'rsvp-link', href: book.eventUrl }, [
     'RSVP',
     el('span', { class: 'visually-hidden', text: ` for ${book.title} on Meetup` }),
-    el('span', { class: 'external-mark', 'aria-hidden': 'true', text: '↗' }),
   ]);
 }
 

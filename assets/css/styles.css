@@ -199,13 +199,9 @@ a { color: var(--accent); text-underline-offset: 2px; }
    "used" while staying obviously related to an unvisited one. */
 a:visited { color: var(--accent-visited); }
 
-/* The mark on an outbound link. Inside the <a>, so it is part of the link. */
-.external-mark {
-  margin-left: 0.2em;
-  font-size: 0.85em;
-  vertical-align: baseline;
-  text-decoration: none;
-}
+/* No ↗ on links that leave the site. Every link opens in the same tab and its
+   words already say where it goes ("Meetup group", "RSVP"), so the mark added
+   nothing — and iOS drew it as a colour emoji. */
 
 code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -335,9 +331,9 @@ code {
 .next-up-rsvp,
 .book-card-rsvp { margin: 0.35rem 0 0; }
 
-/* Styled like the masthead's Meetup link, which is the site's pattern for a
-   link that leaves it: the link colour, underlined, with the ↗. Held to the
-   24px minimum target, since it stands alone rather than inside a sentence. */
+/* Styled like the masthead's Meetup link: the link colour, underlined. Held
+   to the 24px minimum target, since it stands alone rather than inside a
+   sentence. */
 .rsvp-link {
   display: inline-flex;
   align-items: center;

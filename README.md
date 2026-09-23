@@ -23,7 +23,7 @@ book night**, with its cover if it has one — beside the title on a tablet or
 wider, so it costs no height, and under the tagline on a phone.
 
 Give an upcoming book its Meetup event page in `event_url` and it gets an
-**RSVP ↗** link, both in the masthead and under Coming up. Once the date has
+**RSVP** link, both in the masthead and under Coming up. Once the date has
 passed the link disappears on its own, since there's nothing left to RSVP to. It is counted nowhere else — not on the map, not in the
 other figures, not in the languages or translators — so the page never claims
 a book was read before it was. On the day itself it moves onto the map and
@@ -419,12 +419,15 @@ The invalid-country-code marker deliberately uses neither: red would sit about
 8 ΔE from the link colour and could be mistaken for one, so it says
 "(invalid code)" in words instead.
 
-Outbound links (currently just the Meetup group, in the masthead and the
-footer) carry a small ↗ and get a **visited** colour — the same hue, duller and
-less luminous, so a followed link reads as used without looking unrelated.
+Outbound links — the Meetup group in the masthead and footer, and the RSVP
+links — get a **visited** colour: the same hue, duller and less luminous, so a
+followed link reads as used without looking unrelated.
 `scripts/check-contrast.mjs` checks the visited colour for readability and for
-being distinguishable from both the unvisited link and body text. Links open in
-the same tab.
+being distinguishable from both the unvisited link and body text.
+
+They carry no ↗ or other "leaves the site" mark. Links open in the same tab,
+so nothing unexpected happens, and their words already say where they go. The
+arrow was tried and removed: iOS draws ↗ as a colour emoji.
 
 ## Still to decide
 
