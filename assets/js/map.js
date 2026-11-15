@@ -153,6 +153,54 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
     .attr('role', 'button')
     .attr('aria-label', (d) => `${d.entry.name}, ${countText(d.entry.count)}`);
 
+  /* ---- the journey ----
+     The group's reading drawn as a route: Oxford, then each book's country in
+     the order we read them. Above the countries so nothing paints over it,
+     below the emphasis so a picked-out country still outlines on top, and
+     never a target — it describes the map, it isn't a control on it.
+
+     Each hop is a gentle arc rather than a great circle. On this projection a
+     great circle from Japan to Austria swings up over Siberia and reads as a
+     detour; an arc reads as "and then we went to", which is the point. */
+  const routeLayer = root.append('g')
+    .attr('class', 'route')
+    .attr('aria-hidden', 'true')
+    .attr('display', 'none');
+  let routeRun = 0;
+
+  /** A curve from a to b that always bows upward, like a flight path. */
+  function arc(p0, p2) {
+    const [x1, y1] = p0;
+    const [x2, y2] = p2;
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const length = Math.hypot(dx, dy);
+    if (length < 0.5) return null; // the same country twice: no hop to draw
+    let nx = -dy / length;
+    let ny = dx / length;
+    if (ny > 0) { nx = -nx; ny = -ny; }
+    const bend = Math.min(length * 0.2, 70);
+    const p1 = [(x1 + x2) / 2 + nx * bend, (y1 + y2) / 2 + ny * bend];
+    return { p0, p1, p2, length };
+  }
+
+  /**
+   * The first part of a hop, from its start to fraction t of the way along.
+   * The line is drawn by growing the curve itself rather than by animating a
+   * dash: every line on this map keeps the same width at any zoom
+   * (non-scaling-stroke), and that puts dash lengths in screen pixels while
+   * the path's own length is in map units, so a dash reveal would finish
+   * early or late depending on the size of the screen.
+   */
+  function arcPath({ p0, p1, p2 }, t = 1) {
+    const lerp = (a, b) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+    const q0 = lerp(p0, p1);
+    const end = lerp(q0, lerp(p1, p2));
+    return `M${p0}Q${q0} ${end}`;
+  }
+
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
   /* ---- emphasis ----
      Picking out a country is drawn here, in its own layer above every shape,
      rather than by thickening that shape's own stroke.
@@ -413,6 +461,7 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
       scale = event.transform.k;
       root.attr('transform', event.transform);
       dots.attr('r', 5 / scale);
+      routeLayer.selectAll('circle').attr('r', (d) => d.r / scale);
       svgEl.classList.toggle('is-zoomed', scale > 1);
       // The label is placed in screen coordinates, so panning would leave it
       // pointing at open sea. Take it away rather than let it lie.
@@ -485,6 +534,130 @@ export function createMap({ svgEl, topology, countries, byCountry, onSelect, too
     },
     zoomOut() { ease(svg).call(zoom.scaleBy, 1 / 1.6); },
     reset() { ease(svg).call(zoom.transform, d3.zoomIdentity); },
+    /**
+     * Draw the route through `stops` (each { lonLat }), the first being home.
+     * `next`, if given, is where the next book takes us: a dashed leg, since
+     * we haven't been yet. Animated hop by hop unless `animate` is false or
+     * motion is unwelcome; `onStep(i, done)` is called as each stop is
+     * reached, so the page can say where we are. Resolves true when the route
+     * is complete, false if it was hidden or restarted part-way.
+     */
+    async showRoute({ stops, next = null, animate = true, onStep = () => {} }) {
+      const run = ++routeRun;
+      routeLayer.selectAll('*').interrupt().remove();
+      routeLayer.attr('display', null);
+      if (!stops.length) return true;
+
+      const at = (stop) => projection(stop.lonLat);
+      const legs = routeLayer.append('g');
+      const marks = routeLayer.append('g');
+
+      const addLeg = (hop, className) => {
+        if (!hop) return null;
+        const g = legs.append('g').attr('class', className);
+        g.append('path').attr('class', 'route-casing').attr('d', arcPath(hop));
+        g.append('path').attr('class', 'route-line').attr('d', arcPath(hop));
+        return { g, hop };
+      };
+      const addStop = (stop, className, r) => marks.append('circle')
+        .datum({ r })
+        .attr('class', className)
+        .attr('cx', at(stop)[0])
+        .attr('cy', at(stop)[1])
+        .attr('r', r / scale);
+
+      const hops = stops.slice(1).map((stop, i) => addLeg(arc(at(stops[i]), at(stop)), 'route-leg'));
+      const last = stops[stops.length - 1];
+      const nextLeg = next ? addLeg(arc(at(last), at(next)), 'route-leg is-next') : null;
+      const nextStop = next ? addStop(next, 'route-stop is-next', 4) : null;
+      const stopNodes = stops.map((stop, i) =>
+        addStop(stop, i === 0 ? 'route-stop is-home' : 'route-stop', i === 0 ? 5.5 : 4));
+      // Home on top, so the start is never hidden under a later stop.
+      stopNodes[0].raise();
+
+      // Frame the route. So far it all happens between Spain and Japan, a
+      // third of the map's width, and at world scale the European hops are a
+      // tangle of lines a few pixels long — on a phone, barely visible at all.
+      // The box takes in the top of each arc, not just its ends, so no curve
+      // leaves the frame.
+      const xs = [];
+      const ys = [];
+      for (const leg of [...hops, nextLeg]) {
+        if (!leg) continue;
+        const { p0, p1, p2 } = leg.hop;
+        for (const [x, y] of [p0, p2, [(p0[0] + 2 * p1[0] + p2[0]) / 4, (p0[1] + 2 * p1[1] + p2[1]) / 4]]) {
+          xs.push(x);
+          ys.push(y);
+        }
+      }
+      const pad = 24;
+      const [left, right] = d3.extent(xs);
+      const [top, bottom] = d3.extent(ys);
+      const k = Math.max(1, Math.min(4,
+        width / (right - left + 2 * pad),
+        height / (bottom - top + 2 * pad)));
+      const framed = d3.zoomIdentity
+        .translate(width / 2 - (k * (left + right)) / 2, height / 2 - (k * (top + bottom)) / 2)
+        .scale(k);
+
+      if (!animate || prefersReducedMotion() || document.hidden) {
+        svg.interrupt().call(zoom.transform, framed);
+        onStep(stops.length - 1, true);
+        return true;
+      }
+
+      // Everything starts hidden and appears in order.
+      for (const leg of [...hops, nextLeg]) if (leg) leg.g.attr('opacity', 0);
+      for (const node of [...stopNodes.slice(1), nextStop]) if (node) node.attr('opacity', 0);
+
+      const grow = async (leg) => {
+        leg.g.attr('opacity', null);
+        const duration = Math.max(350, Math.min(900, 250 + leg.hop.length * 1.4));
+        try {
+          await leg.g.selectAll('path')
+            .transition()
+            .duration(duration)
+            .ease(d3.easeCubicInOut)
+            .attrTween('d', () => (t) => arcPath(leg.hop, t))
+            .end();
+        } catch {
+          return false; // interrupted: hidden or restarted
+        }
+        return run === routeRun;
+      };
+
+      onStep(0, false);
+      try {
+        await svg.interrupt().transition().duration(700).ease(d3.easeCubicInOut)
+          .call(zoom.transform, framed).end();
+      } catch {
+        // Interrupted: either the route was hidden (caught just below) or
+        // someone zoomed the map themselves, in which case their view wins and
+        // the route carries on drawing in it.
+      }
+      if (run !== routeRun) return false;
+      await wait(200);
+      for (let i = 1; i < stops.length; i++) {
+        if (run !== routeRun) return false;
+        if (hops[i - 1] && !(await grow(hops[i - 1]))) return false;
+        if (run !== routeRun) return false;
+        stopNodes[i].attr('opacity', null);
+        onStep(i, false);
+        await wait(300);
+      }
+      if (nextLeg && !(await grow(nextLeg))) return false;
+      if (run !== routeRun) return false;
+      if (nextStop) nextStop.attr('opacity', null);
+      onStep(stops.length - 1, true);
+      return true;
+    },
+    hideRoute() {
+      routeRun++;
+      routeLayer.selectAll('*').interrupt().remove();
+      routeLayer.attr('display', 'none');
+      // Back out to the whole world, which the route had zoomed in from.
+      if (scale !== 1) ease(svg.interrupt()).call(zoom.transform, d3.zoomIdentity);
+    },
     /** Codes we have books for but could only draw as a point. */
     pointOnlyCodes: points.map((p) => p.entry.code),
   };

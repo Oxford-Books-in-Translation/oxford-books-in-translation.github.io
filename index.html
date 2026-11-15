@@ -157,6 +157,18 @@
           </div>
         </div>
 
+        <!-- The route we've taken through the books, from Oxford, in the
+             order we read them. Off until asked for: the shading is the map's
+             main job, and a line over it all the time would crowd it. The
+             button sits outside the svg, so it works on a phone too, where
+             the map itself takes no input. -->
+        <div class="journey" id="journey" hidden>
+          <button type="button" class="journey-btn" id="journey-toggle">Play our journey</button>
+          <button type="button" class="text-btn" id="journey-replay" hidden>Play again</button>
+          <div class="journey-caption" id="journey-caption"></div>
+          <p class="visually-hidden" id="journey-status" role="status"></p>
+        </div>
+
         <figcaption class="map-foot">
           <div id="legend" class="legend"></div>
           <p class="map-hint" id="map-hint"></p>

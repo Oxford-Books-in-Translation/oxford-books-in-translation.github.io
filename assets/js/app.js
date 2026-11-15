@@ -817,6 +817,151 @@ function buildFilters() {
   $('country-clear').addEventListener('click', () => setState({ country: '' }));
 }
 
+/* ---------------------------------------------------------------- journey */
+
+// Where every journey starts. The Covered Market, near enough.
+const OXFORD = { name: 'Oxford', lonLat: [-1.257, 51.752] };
+const EARTH_RADIUS_MILES = 3958.8;
+const EARTH_MILES = 24901; // once round the equator
+
+/** A book placed at its author's country, or null if we can't place it. */
+function stopFor(book) {
+  const code = book.nationalities[0];
+  const meta = code && data.countries[code];
+  if (!meta || !meta.latlng) return null;
+  return { book, code, name: meta.name, lonLat: [meta.latlng[1], meta.latlng[0]] };
+}
+
+/**
+ * Oxford, then every book we've read in the order we read it. Two books on
+ * one night (the Camus pairing) stay in the CSV's order, which is the order
+ * they were talked about. A book by an author of two nationalities is placed
+ * at the first.
+ */
+function journeyStops() {
+  const read = data.books
+    .filter((book) => book.dateDiscussed)
+    .sort((a, b) => a.dateDiscussed.localeCompare(b.dateDiscussed))
+    .map(stopFor)
+    .filter(Boolean);
+  return [OXFORD, ...read];
+}
+
+/**
+ * Straight-line miles from stop to stop, measured from the middle of each
+ * country — which is why the page only ever says "about".
+ */
+function journeyMiles(stops) {
+  let miles = 0;
+  for (let i = 1; i < stops.length; i++) {
+    miles += window.d3.geoDistance(stops[i - 1].lonLat, stops[i].lonLat) * EARTH_RADIUS_MILES;
+  }
+  return miles;
+}
+
+function describeMiles(miles) {
+  const step = miles >= 10000 ? 1000 : 100;
+  const distance = `about ${(Math.round(miles / step) * step).toLocaleString('en-GB')} miles`;
+  const laps = Number((miles / EARTH_MILES).toFixed(1));
+  const around = laps >= 1.05
+    ? `${laps} times round the world`
+    : laps >= 0.95
+      ? 'once round the world'
+      : `${Math.round((miles / EARTH_MILES) * 100)}% of the way round the world`;
+  return { distance, around };
+}
+
+function renderJourney() {
+  const stops = journeyStops();
+  if (stops.length < 2) return; // nowhere to go yet: the block stays hidden
+
+  const box = $('journey');
+  const toggle = $('journey-toggle');
+  const replay = $('journey-replay');
+  const caption = $('journey-caption');
+  const status = $('journey-status');
+  box.hidden = false;
+
+  const last = stops[stops.length - 1];
+  const books = stops.length - 1;
+  const { distance, around } = describeMiles(journeyMiles(stops));
+  const upcoming = data.upcoming.map(stopFor).find(Boolean) || null;
+
+  const summary = (withNext) => el('p', { class: 'journey-summary' }, [
+    `Oxford to ${last.name} in ${plural(books, 'book')}: `,
+    el('strong', { text: distance }),
+    `, or ${around}.`,
+    withNext && upcoming
+      ? ` Next stop: ${upcoming.name}, ${upcomingDate(upcoming.book)}.`
+      : '',
+  ]);
+
+  const step = (i) => {
+    if (i === 0) {
+      return el('p', { class: 'journey-summary' }, [
+        el('span', { class: 'journey-when', text: 'Setting off' }),
+        el('span', { class: 'journey-where', text: 'Oxford' }),
+      ]);
+    }
+    const { book, name } = stops[i];
+    const cover = book.cover
+      ? el('img', { class: 'journey-cover', src: `covers/${book.cover}`, alt: '' })
+      : null;
+    if (cover) cover.addEventListener('error', () => cover.remove());
+    return el('div', { class: 'journey-stop' }, [
+      cover,
+      el('p', { class: 'journey-summary' }, [
+        el('span', { class: 'journey-when', text: `${i} of ${books} · ${formatDate(book)}` }),
+        el('span', { class: 'journey-where' }, [el('i', { text: book.title }), ` · ${name}`]),
+      ]),
+    ]);
+  };
+
+  let shown = false;
+
+  function reset() {
+    shown = false;
+    map.hideRoute();
+    map.spotlight(null);
+    caption.replaceChildren(summary(false));
+    toggle.textContent = 'Play our journey';
+    toggle.dataset.icon = 'play';
+    replay.hidden = true;
+    status.textContent = '';
+  }
+
+  function play() {
+    shown = true;
+    toggle.textContent = 'Stop';
+    toggle.dataset.icon = 'stop';
+    replay.hidden = true;
+    status.textContent = '';
+    map.showRoute({
+      stops,
+      next: upcoming,
+      onStep(i, done) {
+        if (done) {
+          map.spotlight(null);
+          caption.replaceChildren(summary(true));
+          toggle.textContent = 'Hide route';
+          delete toggle.dataset.icon;
+          replay.hidden = false;
+          // Only the end is announced: a screen reader reading out every hop
+          // as it lands would talk over itself for ten seconds.
+          status.textContent = `Route shown. ${caption.textContent}`;
+        } else {
+          caption.replaceChildren(step(i));
+          map.spotlight(stops[i].code || null);
+        }
+      },
+    });
+  }
+
+  toggle.addEventListener('click', () => (shown ? reset() : play()));
+  replay.addEventListener('click', play);
+  reset();
+}
+
 // Matches the phone section of styles.css, where the map takes no input.
 const phoneWidth = window.matchMedia('(max-width: 719px)');
 
@@ -865,6 +1010,7 @@ async function init() {
   renderNextUp();
   renderComingUp();
   renderLegend();
+  renderJourney();
   renderCountryIndex();
   renderCoverageNote();
   renderTranslators();

@@ -218,6 +218,37 @@ border don't read as jagged. **The fill is deliberately left alone:** on this
 map a darker shade means more books, so darkening the country under the pointer
 would make it look like a country we'd read more of.
 
+### The journey
+
+Under the map, **Play our journey** draws the group's route: Oxford first, then
+each book's country in the order we read it, hop by hop. The caption names
+each book as it lands, with its cover if it has one. A dashed leg runs to the
+next book's country. It needs no upkeep: it's worked out from `books.csv` every
+time the page loads, so a new book extends the route on the day it's
+discussed.
+
+- **The miles** are straight lines between the middle of each country, so the
+  page says "about" and rounds to the nearest thousand. A book by an author of
+  two nationalities is placed at the first one listed. Two books on one night
+  keep the order they appear in the CSV.
+- **Off until asked for.** The shading is the map's main job, and a route
+  drawn over it all the time would crowd it.
+- **It zooms to fit the route.** Everything so far happens between Spain and
+  Japan, and at world scale the European hops are a tangle a few pixels long.
+  Hiding the route zooms back out to the whole world.
+- **Arcs, not great circles.** On this projection a great circle from Japan to
+  Austria bends up over Siberia and looks like a detour. An arc that always
+  bows upward reads as "and then we went to".
+- **The line grows along the curve rather than being revealed by a dash
+  animation.** Lines on this map keep the same width at any zoom
+  (`non-scaling-stroke`), which puts dash lengths in screen pixels while the
+  path's length is in map units, so a dash reveal would finish early or late
+  depending on the screen.
+- **On a phone** the button sits under the map rather than on it, so it works
+  even though the map itself takes no taps.
+- **Motion.** With reduced motion switched on, the whole route appears at once.
+  Screen readers hear only the finished summary, not every hop.
+
 ## How the map handles awkward cases
 
 - **Several nationalities.** `FRA|DZA` counts the book for both countries, and

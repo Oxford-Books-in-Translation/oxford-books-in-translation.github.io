@@ -701,6 +701,110 @@ code {
   .icon-btn { min-width: 40px; min-height: 40px; }
 }
 
+/* ---------- The journey ---------------------------------------------- */
+
+/* The route is drawn like the emphasis: a fine ink line on a paper casing,
+   so it reads over the darkest green and over bare paper alike. */
+.route { pointer-events: none; }
+.route path {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+}
+.route-casing { stroke: var(--surface); stroke-width: 3.5; }
+.route-line { stroke: var(--ink); stroke-width: 1.4; }
+/* The next book: dashed, because we haven't been yet. */
+.route-leg.is-next .route-line { stroke-dasharray: 1 4; stroke-width: 1.6; }
+
+.route-stop {
+  fill: var(--ink);
+  stroke: var(--surface);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+/* Home is the open ring the line leaves from; the next stop an open ring
+   waiting to be filled. */
+.route-stop.is-home { fill: var(--surface); stroke: var(--ink); stroke-width: 2; }
+.route-stop.is-next { fill: var(--surface); stroke: var(--ink); stroke-width: 1.5; }
+
+.journey {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1.1rem;
+  margin-top: 1rem;
+}
+
+.journey-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 36px;
+  padding: 0.4rem 0.95rem;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  font-family: var(--text);
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.journey-btn:hover { background: var(--plane); }
+/* Drawn shapes, not characters: a ▶ in the text turns into an emoji on
+   iPhones, which is how the old ↗ link marks came to be removed. */
+.journey-btn[data-icon]::before {
+  content: "";
+  width: 8px;
+  height: 9px;
+  background: currentColor;
+}
+.journey-btn[data-icon="play"]::before { clip-path: polygon(0 0, 100% 50%, 0 100%); }
+.journey-btn[data-icon="stop"]::before { width: 8px; height: 8px; }
+
+@media (pointer: coarse) {
+  .journey-btn { min-height: 44px; }
+}
+
+/* Two lines tall whatever it holds, so the page doesn't jump as the caption
+   changes from one stop to the next. */
+.journey-caption {
+  flex: 1 1 18rem;
+  min-width: 0;
+  min-height: 3rem;
+  display: flex;
+  align-items: center;
+}
+
+.journey-summary {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  text-wrap: pretty;
+}
+.journey-summary strong { color: var(--ink); font-weight: 600; }
+
+.journey-when {
+  display: block;
+  color: var(--muted);
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.journey-where { display: block; color: var(--ink); }
+
+.journey-stop { display: flex; align-items: center; gap: 0.65rem; }
+.journey-cover {
+  flex: none;
+  width: 32px;
+  aspect-ratio: auto 2 / 3;
+  object-fit: cover;
+  border: 1px solid var(--border);
+}
+
 .map-foot {
   display: flex;
   flex-wrap: wrap;
@@ -1228,7 +1332,8 @@ code {
   .map-figure {
     margin-inline: -20px;
   }
-  .map-figure .map-foot {
+  .map-figure .map-foot,
+  .map-figure .journey {
     padding-inline: 20px;
   }
 
